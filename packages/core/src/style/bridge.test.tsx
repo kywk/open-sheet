@@ -3,7 +3,7 @@ import { compile } from '../compile/compile.js'
 import { budget } from '../compile/fixtures.js'
 import { toHtml } from '../export/html.js'
 import { evaluateWorkbook } from '../formula/evaluate.js'
-import { formatValue, toCssDeclarations } from './css.js'
+import { formatValue, toCssDeclarations, toStyleObject } from './css.js'
 import { toArgb, toExcelStyle } from './excel.js'
 import { DEFAULT_THEME, resolveStyle } from './theme.js'
 
@@ -119,5 +119,24 @@ describe('data bars land in both renderers', () => {
     const html = toHtml(book, { values: evaluateWorkbook(book) })
     expect(html).toContain('linear-gradient(to right, #93c5fd 100%')
     expect(html).toMatch(/linear-gradient\(to right, #93c5fd 7[0-9]%/)
+  })
+})
+
+describe('react needs its own shape of the same declarations', () => {
+  it('camelCases every property', () => {
+    const header = resolveStyle(DEFAULT_THEME, 'tableHeader')
+    const object = toStyleObject(header as never)
+    expect(object.fontWeight).toBe('700')
+    expect(object.backgroundColor).toBe('#0f172a')
+    expect(object.borderBottom).toBeDefined()
+    expect(Object.keys(object).some((key) => key.includes('-'))).toBe(false)
+  })
+
+  it('keeps the same values as the CSS adapter', () => {
+    const style = resolveStyle(DEFAULT_THEME, 'note') as never
+    const css = toCssDeclarations(style)
+    const object = toStyleObject(style)
+    expect(Object.keys(object)).toHaveLength(Object.keys(css).length)
+    expect(object.fontStyle).toBe(css['font-style'])
   })
 })

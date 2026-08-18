@@ -1,7 +1,7 @@
 {
   "name": "@open-sheet/core",
   "version": "0.0.0",
-  "description": "The spreadsheet framework built for agents \u2014 compiler, formula engine, viewer, and export.",
+  "description": "The spreadsheet framework built for agents — compiler, formula engine, viewer, and export.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -32,10 +32,18 @@
   "dependencies": {
     "@formulajs/formulajs": "^4.6.1",
     "exceljs": "^4.4.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "vite": "^8.2.1"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "jsdom": "^30.0.1",
     "tsdown": "^0.22.14"
   },
   "bin": {

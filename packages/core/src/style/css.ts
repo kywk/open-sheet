@@ -88,3 +88,16 @@ function group(text: string): string {
 function trimNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(10)))
 }
+
+/**
+ * React's inline `style` prop takes camelCase keys and silently drops kebab-case
+ * ones, so the grid needs its own shape of the same declarations. Keeping this
+ * beside the CSS adapter means the two cannot drift.
+ */
+export function toStyleObject(style: CellStyle): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [property, value] of Object.entries(toCssDeclarations(style))) {
+    out[property.replace(/-([a-z])/g, (_, ch: string) => ch.toUpperCase())] = value
+  }
+  return out
+}

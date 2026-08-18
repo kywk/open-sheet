@@ -1,5 +1,7 @@
 # open-sheet
 
+<img src=".github/assets/banner.png" alt="open-sheet — 一張畫在試算表網格上的依賴圖：兩格匯入一格" width="100%">
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](https://opensource.org/licenses/MIT)
 [![Status](https://img.shields.io/badge/status-early%20development-orange?style=flat)](https://github.com/lianghsun/open-sheet/milestones)
 

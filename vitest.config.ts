@@ -15,6 +15,10 @@ export default defineConfig({
       },
       { find: /^@open-sheet\/core\/jsx-runtime$/, replacement: `${core}/jsx-runtime.ts` },
       { find: /^@open-sheet\/core$/, replacement: `${core}/index.ts` },
+      {
+        find: /^virtual:open-sheet\/manifest$/,
+        replacement: `${core}/app/__fixtures__/manifest-stub.ts`,
+      },
     ],
   },
   esbuild: {
@@ -24,5 +28,8 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['packages/*/src/**/*.{test,spec}.{ts,tsx}'],
+    // The viewer needs a DOM; the compiler deliberately does not.
+    environment: 'node',
+    projects: undefined,
   },
 })

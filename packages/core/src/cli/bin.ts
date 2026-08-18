@@ -1,17 +1,24 @@
 import { relative } from 'node:path'
 import { build } from './build.js'
+import { dev } from './dev.js'
+import { preview } from './preview.js'
 
 const USAGE = `open-sheet — the spreadsheet framework built for agents
 
 Usage:
-  open-sheet build [options]
+  open-sheet <command> [options]
 
 Commands:
+  dev       Start the viewer with hot reload (default port 5373)
   build     Compile every workbook under sheets/ and write .xlsx (and .csv)
+  preview   Serve what build wrote
 
 Options:
   --out <dir>    Output directory (default: dist)
   --root <dir>   Workspace root (default: cwd)
+  --port <n>     Port for dev/preview
+  --host <host>  Bind address for dev
+  --open         Open a browser (dev)
   --no-csv       Skip the per-sheet .csv files
   --html         Also write a self-contained, printable .html
   --pdf          Also write a .pdf (needs playwright installed)
@@ -31,6 +38,29 @@ export async function run(argv: string[]): Promise<number> {
     return command ? 0 : 1
   }
 
+  const root = flag(argv, 'root')
+  const port = flag(argv, 'port')
+
+  if (command === 'dev') {
+    const options: Parameters<typeof dev>[0] = { open: argv.includes('--open') }
+    if (root) options.root = root
+    if (port) options.port = Number(port)
+    const host = flag(argv, 'host')
+    if (host) options.host = host
+    await dev(options)
+    return new Promise<number>(() => {})
+  }
+
+  if (command === 'preview') {
+    const options: Parameters<typeof preview>[0] = {}
+    if (root) options.root = root
+    if (port) options.port = Number(port)
+    const out = flag(argv, 'out')
+    if (out) options.out = out
+    await preview(options)
+    return new Promise<number>(() => {})
+  }
+
   if (command !== 'build') {
     process.stderr.write(`unknown command: ${command}\n\n${USAGE}`)
     return 1
@@ -42,7 +72,6 @@ export async function run(argv: string[]): Promise<number> {
     pdf: argv.includes('--pdf'),
   }
   const out = flag(argv, 'out')
-  const root = flag(argv, 'root')
   if (out) options.out = out
   if (root) options.root = root
 
