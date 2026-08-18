@@ -100,6 +100,15 @@ export interface SheetMeta {
   description?: string
 }
 
+export interface OpenSheetConfig {
+  /** Directory holding `<id>/index.tsx` workbooks, relative to the workspace root. */
+  sheetsDir?: string
+  /** Directory holding `<id>.md` house styles. */
+  themesDir?: string
+  /** Dev server port. */
+  port?: number
+}
+
 export interface DesignSystem {
   palette?: Record<string, string>
   fonts?: Record<string, string>
