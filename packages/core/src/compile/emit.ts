@@ -7,10 +7,18 @@ import type { Aggregate, Block, SheetNode, TableNode, WorkbookNode } from './nod
 import type { Registry, TableAnchor } from './registry.js'
 import { makeRowContext } from './row-context.js'
 
+export interface ConditionalFormat {
+  kind: 'dataBar'
+  rect: Rect
+  color: string
+  negativeColor?: string
+}
+
 export interface CompiledSheet {
   name: string
   cells: Map<CellKey, Cell>
   columnWidths: Map<number, number>
+  conditionalFormats: ConditionalFormat[]
   freeze?: Addr
   bounds: Size
 }
@@ -49,16 +57,26 @@ function emitSheet(
 ): CompiledSheet {
   const cells = new Map<CellKey, Cell>()
   const columnWidths = new Map<number, number>()
+  const conditionalFormats: ConditionalFormat[] = []
   const placements = placeSheet(sheet)
 
   for (const placement of placements) {
-    emitPlacement(placement, sheet.name, cells, columnWidths, registry, definedNames)
+    emitPlacement(
+      placement,
+      sheet.name,
+      cells,
+      columnWidths,
+      conditionalFormats,
+      registry,
+      definedNames,
+    )
   }
 
   const compiled: CompiledSheet = {
     name: sheet.name,
     cells,
     columnWidths,
+    conditionalFormats,
     bounds: boundsOf(placements),
   }
   if (sheet.freeze) compiled.freeze = parseFreeze(sheet.freeze)
@@ -70,6 +88,7 @@ function emitPlacement(
   sheetName: string,
   cells: Map<CellKey, Cell>,
   columnWidths: Map<number, number>,
+  conditionalFormats: ConditionalFormat[],
   registry: Registry,
   definedNames: Map<string, DefinedName>,
 ): void {
@@ -108,10 +127,21 @@ function emitPlacement(
       return
     }
     case 'table':
-      emitTable(block, rect, sheetName, cells, columnWidths, registry, definedNames)
+      emitTable(
+        block,
+        rect,
+        sheetName,
+        cells,
+        columnWidths,
+        conditionalFormats,
+        registry,
+        definedNames,
+      )
       return
   }
 }
+
+const DEFAULT_BAR_COLOR = '#93c5fd'
 
 function emitTable(
   table: TableNode,
@@ -119,6 +149,7 @@ function emitTable(
   sheetName: string,
   cells: Map<CellKey, Cell>,
   columnWidths: Map<number, number>,
+  conditionalFormats: ConditionalFormat[],
   registry: Registry,
   definedNames: Map<string, DefinedName>,
 ): void {
@@ -179,6 +210,20 @@ function emitTable(
       cells.set(target, cell)
     })
   })
+
+  if (table.data.length > 0) {
+    table.columns.forEach((column, i) => {
+      if (!column.bar) return
+      const bar = column.bar === true ? {} : column.bar
+      const format: ConditionalFormat = {
+        kind: 'dataBar',
+        rect: { r: firstDataRow, c: rect.c + i, rows: table.data.length, cols: 1 },
+        color: bar.color ?? DEFAULT_BAR_COLOR,
+      }
+      if (bar.negativeColor) format.negativeColor = bar.negativeColor
+      conditionalFormats.push(format)
+    })
+  }
 
   const lastDataRow = firstDataRow + Math.max(table.data.length - 1, 0)
   let totalRow: number | undefined

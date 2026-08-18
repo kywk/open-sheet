@@ -40,5 +40,13 @@
   },
   "bin": {
     "open-sheet": "./bin.js"
+  },
+  "peerDependencies": {
+    "playwright": "*"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
   }
 }

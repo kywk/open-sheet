@@ -2,9 +2,12 @@ import ExcelJS from 'exceljs'
 import type { CompiledWorkbook } from '../compile/emit.js'
 import { serialize } from '../formula/serialize.js'
 import { type Computed, isExcelError, isNotEvaluated } from '../formula/value.js'
-import { columnName, toA1 } from '../model/a1.js'
+import { columnName, rangeToA1, toA1 } from '../model/a1.js'
 import { type Cell, parseCellKey } from '../model/cell.js'
 import type { ResolveContext } from '../refs/resolve.js'
+import { toArgb, toExcelStyle } from '../style/excel.js'
+import { DEFAULT_THEME, resolveStyle } from '../style/theme.js'
+import type { Theme } from '../style/types.js'
 import { numberFormat } from './formats.js'
 import type { WorkbookWriter, WriteOptions } from './writer.js'
 
@@ -12,6 +15,7 @@ export class XlsxWriter implements WorkbookWriter {
   readonly extension = 'xlsx'
 
   async write(book: CompiledWorkbook, options: WriteOptions = {}): Promise<Buffer> {
+    const theme = options.theme ?? DEFAULT_THEME
     const workbook = new ExcelJS.Workbook()
     workbook.creator = options.creator ?? 'open-sheet'
     // Excel honours this and recalculates on open. LibreOffice does not — its
@@ -31,11 +35,29 @@ export class XlsxWriter implements WorkbookWriter {
       const cached = options.cacheValues === false ? undefined : options.values
       for (const [key, cell] of sheet.cells) {
         const { r, c } = parseCellKey(key)
-        writeCell(worksheet, r, c, cell, context, cached)
+        writeCell(worksheet, r, c, cell, context, cached, theme)
       }
 
-      for (const [index, width] of sheet.columnWidths) {
-        worksheet.getColumn(index + 1).width = width
+      for (let c = 0; c < sheet.bounds.cols; c += 1) {
+        worksheet.getColumn(c + 1).width = sheet.columnWidths.get(c) ?? theme.defaultColumnWidth
+      }
+
+      for (const format of sheet.conditionalFormats) {
+        worksheet.addConditionalFormatting({
+          ref: rangeToA1(format.rect),
+          rules: [
+            {
+              type: 'dataBar',
+              priority: 1,
+              minLength: 0,
+              maxLength: 100,
+              gradient: false,
+              showValue: true,
+              cfvo: [{ type: 'min' }, { type: 'max' }],
+              color: { argb: toArgb(format.color) },
+            } as never,
+          ],
+        })
       }
 
       if (sheet.freeze && (sheet.freeze.r > 0 || sheet.freeze.c > 0)) {
@@ -71,6 +93,7 @@ function writeCell(
   cell: Cell,
   context: ResolveContext,
   values: Map<string, Computed> | undefined,
+  theme: Theme,
 ): void {
   const target = worksheet.getCell(r + 1, c + 1)
 
@@ -85,7 +108,10 @@ function writeCell(
     target.value = cell.value
   }
 
-  const format = numberFormat(cell.format)
+  const style = resolveStyle(theme, cell.style)
+  if (style) Object.assign(target, toExcelStyle(style))
+
+  const format = numberFormat(cell.format ?? style?.format)
   if (format) target.numFmt = format
 
   if (cell.span && (cell.span.rows > 1 || cell.span.cols > 1)) {

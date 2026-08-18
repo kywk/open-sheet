@@ -3,12 +3,20 @@ import type { CellValue } from '../model/cell.js'
 import type { Addr, Size } from '../model/geometry.js'
 import type { RowContext } from '../refs/ref.js'
 
+export interface DataBar {
+  color?: string
+  /** Negative values grow left from a zero baseline. */
+  negativeColor?: string
+}
+
 export interface ColumnSpec<T = any> {
   key: string
   header?: string
   format?: string
   width?: number
   style?: string
+  /** Draw an in-cell bar across this column's data range. Live in Excel, drawn in HTML. */
+  bar?: boolean | DataBar
   value?: (row: T, index: number) => CellValue
   formula?: (row: RowContext<T>) => Expr | null | undefined
 }

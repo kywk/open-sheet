@@ -4,10 +4,17 @@ import { build } from './build.js'
 const USAGE = `open-sheet — the spreadsheet framework built for agents
 
 Usage:
-  open-sheet build [--out <dir>] [--root <dir>] [--no-csv]
+  open-sheet build [options]
 
 Commands:
   build     Compile every workbook under sheets/ and write .xlsx (and .csv)
+
+Options:
+  --out <dir>    Output directory (default: dist)
+  --root <dir>   Workspace root (default: cwd)
+  --no-csv       Skip the per-sheet .csv files
+  --html         Also write a self-contained, printable .html
+  --pdf          Also write a .pdf (needs playwright installed)
 `
 
 function flag(argv: string[], name: string): string | undefined {
@@ -29,7 +36,11 @@ export async function run(argv: string[]): Promise<number> {
     return 1
   }
 
-  const options: Parameters<typeof build>[0] = { csv: !argv.includes('--no-csv') }
+  const options: Parameters<typeof build>[0] = {
+    csv: !argv.includes('--no-csv'),
+    html: argv.includes('--html'),
+    pdf: argv.includes('--pdf'),
+  }
   const out = flag(argv, 'out')
   const root = flag(argv, 'root')
   if (out) options.out = out
@@ -46,6 +57,7 @@ export async function run(argv: string[]): Promise<number> {
         `  note: ${result.notEvaluated} cell(s) exported as live formulas but not evaluated here\n`,
       )
     }
+    for (const warning of result.warnings) process.stdout.write(`  warning: ${warning}\n`)
   }
 
   return 0

@@ -78,7 +78,7 @@ export default (
           data={quarters}
           columns={[
             col('quarter', { header: 'Quarter', width: 12 }),
-            col('revenue', { header: 'Revenue', format: 'currency', width: 14 }),
+            col('revenue', { header: 'Revenue', format: 'currency', width: 14, bar: true }),
             col('cogs', { header: 'COGS', format: 'currency', width: 14 }),
             col('opex', { header: 'Opex', format: 'currency', width: 14 }),
             col<Quarter>('grossProfit', {

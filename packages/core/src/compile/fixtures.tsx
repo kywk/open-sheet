@@ -60,7 +60,7 @@ export function budget(quarters: Quarter[] = QUARTERS): WorkbookNode {
             data={quarters}
             columns={[
               col('quarter', { header: 'Quarter', width: 12 }),
-              col('revenue', { header: 'Revenue', format: 'currency' }),
+              col('revenue', { header: 'Revenue', format: 'currency', bar: true }),
               col('cogs', { header: 'COGS', format: 'currency' }),
               col<Quarter>('grossProfit', {
                 header: 'Gross profit',

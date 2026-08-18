@@ -1,5 +1,6 @@
 import type { CompiledWorkbook } from '../compile/emit.js'
 import type { ValueMap } from '../formula/evaluate.js'
+import type { Theme } from '../style/types.js'
 
 export interface WriteOptions {
   /**
@@ -18,6 +19,9 @@ export interface WriteOptions {
    * back our own answers and prove nothing.
    */
   cacheValues?: boolean
+
+  /** House style. Both this writer and the HTML renderer consume it. */
+  theme?: Theme
 
   creator?: string
 }

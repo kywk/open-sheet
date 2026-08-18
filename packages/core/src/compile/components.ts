@@ -8,6 +8,7 @@ import type {
   Block,
   CellNode,
   ColumnSpec,
+  DataBar,
   KpiBandNode,
   KpiItem,
   NoteNode,
@@ -53,6 +54,7 @@ export interface ColumnOptions<T> {
   format?: string
   width?: number
   style?: string
+  bar?: boolean | DataBar
   value?: (row: T, index: number) => CellValue
   formula?: (row: RowContext<T>) => Expr | null | undefined
 }
