@@ -3,11 +3,22 @@ import type { ValueMap } from '../formula/evaluate.js'
 
 export interface WriteOptions {
   /**
-   * Cached values written alongside each formula. Excel recalculates on open,
-   * but a cached result means the file shows correct numbers in viewers that
-   * do not recalculate (Preview, GitHub, many mobile apps).
+   * Values to cache alongside each formula, so the file shows numbers in viewers
+   * that cannot compute at all (Preview, GitHub, most mobile apps).
+   *
+   * Trusting these is only safe because CI proves our evaluator agrees with a
+   * real spreadsheet engine — see the recalculation check.
    */
   values?: ValueMap
+
+  /**
+   * Set false to write bare formulas with no cached results. Anything opening
+   * the file must then compute for itself, which is what makes the CI
+   * recalculation check meaningful: with cached results present it would read
+   * back our own answers and prove nothing.
+   */
+  cacheValues?: boolean
+
   creator?: string
 }
 

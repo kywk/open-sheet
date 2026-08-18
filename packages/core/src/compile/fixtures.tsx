@@ -1,4 +1,4 @@
-import { div, sub, sum } from '../formula/expr.js'
+import { div, mul, sub, sum } from '../formula/expr.js'
 import { ref } from '../refs/ref.js'
 import {
   Cell,
@@ -67,6 +67,12 @@ export function budget(quarters: Quarter[] = QUARTERS): WorkbookNode {
                 format: 'currency',
                 formula: (r) => sub(r.cell('revenue'), r.cell('cogs')),
               }),
+              col<Quarter>('netIncome', {
+                header: 'Net income',
+                format: 'currency',
+                formula: (r) =>
+                  mul(r.cell('grossProfit'), sub(1, ref('assumptions').get('taxRate'))),
+              }),
               col<Quarter>('qoq', {
                 header: 'QoQ',
                 format: 'percent',
@@ -74,7 +80,7 @@ export function budget(quarters: Quarter[] = QUARTERS): WorkbookNode {
                   r.isFirst ? null : sub(div(r.cell('revenue'), r.prev().cell('revenue')), 1),
               }),
             ]}
-            total={{ revenue: 'sum', cogs: 'sum', grossProfit: 'sum' }}
+            total={{ revenue: 'sum', cogs: 'sum', grossProfit: 'sum', netIncome: 'sum' }}
           />
 
           <Note>

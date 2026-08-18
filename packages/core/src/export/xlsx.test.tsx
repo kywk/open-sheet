@@ -44,7 +44,7 @@ describe('the exported workbook', () => {
     const { reopened } = await roundTrip()
     const pl = reopened.getWorksheet('P&L')
     expect(pl?.getCell('B5').numFmt).toBe('#,##0')
-    expect(pl?.getCell('E6').numFmt).toBe('0.0%')
+    expect(pl?.getCell('F6').numFmt).toBe('0.0%')
     expect(pl?.getColumn(1).width).toBe(12)
   })
 
@@ -58,5 +58,22 @@ describe('the exported workbook', () => {
   it('writes both sheets', async () => {
     const { reopened } = await roundTrip()
     expect(reopened.worksheets.map((w) => w.name)).toEqual(['Assumptions', 'P&L'])
+  })
+})
+
+describe('cached results', () => {
+  it('can be omitted so a reader must compute for itself', async () => {
+    const book = compile(budget())
+    const values = evaluateWorkbook(book)
+    const buffer = await new XlsxWriter().write(book, { values, cacheValues: false })
+    const reopened = new ExcelJS.Workbook()
+    await reopened.xlsx.load(buffer as unknown as ArrayBuffer)
+
+    const cell = reopened.getWorksheet('P&L')?.getCell('E5').value as {
+      formula?: string
+      result?: number
+    }
+    expect(cell.formula).toBeDefined()
+    expect(cell.result).toBeUndefined()
   })
 })

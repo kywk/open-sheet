@@ -67,7 +67,12 @@ describe.skipIf(!SOFFICE)('cross-engine recalculation', () => {
   it('LibreOffice agrees with our evaluator', { timeout: 180_000 }, async () => {
     const book = compile(budget())
     const values = evaluateWorkbook(book)
-    const buffer = await new XlsxWriter().write(book, { values })
+
+    // cacheValues: false on purpose. LibreOffice's default for xlsx is "never
+    // recalculate on load" and it ignores fullCalcOnLoad here, so with cached
+    // results present it would report the numbers we put in the file — this
+    // check would pass even if serialize() emitted nonsense.
+    const buffer = await new XlsxWriter().write(book, { values, cacheValues: false })
 
     const dir = mkdtempSync(join(tmpdir(), 'open-sheet-recalc-'))
     const xlsx = join(dir, 'fixture.xlsx')
@@ -131,5 +136,60 @@ describe.skipIf(!SOFFICE)('cross-engine recalculation', () => {
     expect(compared, 'no formula cells were compared — the check proved nothing').toBeGreaterThan(5)
     if (skipped.length)
       console.info(`recalc: skipped ${skipped.length} cell(s):`, skipped.join(', '))
+  })
+})
+
+/**
+ * The product claim, tested directly: change one assumption and the numbers that
+ * depend on it move. Nothing here reads a value open-sheet computed — LibreOffice
+ * is the only thing doing arithmetic.
+ */
+describe.skipIf(!SOFFICE)('the exported workbook is a live model', () => {
+  it('recalculates the whole P&L when one assumption changes', { timeout: 180_000 }, async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'open-sheet-live-'))
+
+    const netIncomeFor = async (taxRate: number): Promise<number[]> => {
+      const book = compile(budget())
+      const assumptions = book.sheets[0]
+      const cell = assumptions?.cells.get('2,1')
+      expect(cell, 'fixture should have a taxRate assumption cell').toBeDefined()
+      ;(cell as { value?: number }).value = taxRate
+
+      const name = `tax-${String(taxRate).replace('.', '_')}`
+      const file = join(dir, `${name}.xlsx`)
+      writeFileSync(file, await new XlsxWriter().write(book, { cacheValues: false }))
+
+      execFileSync(
+        SOFFICE as string,
+        [
+          `-env:UserInstallation=file://${join(dir, 'profile')}`,
+          '--headless',
+          '--convert-to',
+          CSV_ALL_SHEETS,
+          '--outdir',
+          join(dir, name),
+          file,
+        ],
+        { stdio: 'pipe', timeout: 150_000 },
+      )
+
+      const out = readdirSync(join(dir, name)).find((f) => f.includes('P') && f.endsWith('.csv'))
+      const grid = parseCsv(readFileSync(join(dir, name, out as string), 'utf8'))
+      // Net income is the 7th column; data rows start after the KPI band, gap,
+      // title and header — but we locate it by the header rather than by counting.
+      const headerRow = grid.findIndex((row) => row.includes('Net income'))
+      const column = grid[headerRow]?.indexOf('Net income') as number
+      return grid.slice(headerRow + 1, headerRow + 5).map((row) => Number(row[column]))
+    }
+
+    const base = await netIncomeFor(0.2)
+    const raised = await netIncomeFor(0.35)
+
+    expect(base.every(Number.isFinite)).toBe(true)
+    expect(raised.every(Number.isFinite)).toBe(true)
+    for (let i = 0; i < base.length; i += 1) {
+      // net income = operating income × (1 - taxRate), so 0.35 yields 0.65/0.80 of 0.20
+      expect(raised[i] as number).toBeCloseTo((base[i] as number) * (0.65 / 0.8), 4)
+    }
   })
 })

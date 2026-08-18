@@ -14,6 +14,11 @@ export class XlsxWriter implements WorkbookWriter {
   async write(book: CompiledWorkbook, options: WriteOptions = {}): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook()
     workbook.creator = options.creator ?? 'open-sheet'
+    // Excel honours this and recalculates on open. LibreOffice does not — its
+    // default for xlsx is "never recalculate on load", so it shows our cached
+    // results until the user edits a cell. That is why the CI check exports
+    // without cached results rather than relying on this flag.
+    workbook.calcProperties.fullCalcOnLoad = true
 
     for (const sheet of book.sheets) {
       const worksheet = workbook.addWorksheet(sheet.name)
@@ -23,9 +28,10 @@ export class XlsxWriter implements WorkbookWriter {
         sheet: sheet.name,
       }
 
+      const cached = options.cacheValues === false ? undefined : options.values
       for (const [key, cell] of sheet.cells) {
         const { r, c } = parseCellKey(key)
-        writeCell(worksheet, r, c, cell, context, options.values)
+        writeCell(worksheet, r, c, cell, context, cached)
       }
 
       for (const [index, width] of sheet.columnWidths) {

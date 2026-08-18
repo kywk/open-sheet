@@ -1,25 +1,44 @@
 {
   "name": "@open-sheet/core",
   "version": "0.0.0",
-  "description": "The spreadsheet framework built for agents — compiler, formula engine, viewer, and export.",
+  "description": "The spreadsheet framework built for agents \u2014 compiler, formula engine, viewer, and export.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts",
-    "./jsx-runtime": "./src/jsx-runtime.ts",
-    "./jsx-dev-runtime": "./src/jsx-runtime.ts"
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.mts",
+      "default": "./dist/jsx-runtime.mjs"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/jsx-runtime.d.mts",
+      "default": "./dist/jsx-runtime.mjs"
+    }
   },
-  "files": ["dist", "skills"],
+  "files": [
+    "dist",
+    "bin.js",
+    "skills"
+  ],
   "scripts": {
+    "build": "tsdown",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@formulajs/formulajs": "^4.6.1",
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "vite": "^8.2.1"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0"
+    "@types/node": "^26.2.0",
+    "tsdown": "^0.22.14"
+  },
+  "bin": {
+    "open-sheet": "./bin.js"
   }
 }

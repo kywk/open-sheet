@@ -1,0 +1,13 @@
+{
+  "name": "@open-sheet/demo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "open-sheet build --out dist",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@open-sheet/core": "workspace:*"
+  }
+}

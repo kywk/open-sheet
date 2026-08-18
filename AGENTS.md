@@ -65,3 +65,23 @@ Sizes are discrete (rows × cols), so measurement is pure arithmetic. This is th
 ## Naming
 
 `sheets/<id>/index.tsx` · `open-sheet.config.ts` · `themes/<id>.md` + `<id>.demo.tsx` · CSS vars `--os-*` · comment marker `@sheet-comment` · current-position file `node_modules/.open-sheet/current.json` · dev port **5373**
+
+## Cached formula results — a decision worth knowing
+
+The xlsx writer stores a cached result next to each formula, so viewers that
+cannot compute (Preview, GitHub, most mobile apps) still show numbers. It also
+sets `fullCalcOnLoad`.
+
+Two things were measured, not assumed:
+
+- **Excel** honours `fullCalcOnLoad` and recalculates on open.
+- **LibreOffice** does not. Its default for xlsx is *never recalculate on load*,
+  so it displays our cached results until the user edits a cell.
+
+That is why the CI recalculation check exports with `cacheValues: false`. With
+cached results present, LibreOffice reads back the numbers we wrote and the
+check passes even if `serialize()` emits nonsense — it would be a test of
+nothing. Do not "simplify" it by dropping that flag.
+
+Caching values is only safe *because* that check proves our evaluator and a real
+spreadsheet engine agree about what our formulas mean.

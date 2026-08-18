@@ -35,7 +35,14 @@ describe('the JSX pipeline', () => {
     expect(table.firstDataRow).toBe(4)
     expect(table.lastDataRow).toBe(7)
     expect(table.totalRow).toBe(8)
-    expect([...table.columns.keys()]).toEqual(['quarter', 'revenue', 'cogs', 'grossProfit', 'qoq'])
+    expect([...table.columns.keys()]).toEqual([
+      'quarter',
+      'revenue',
+      'cogs',
+      'grossProfit',
+      'netIncome',
+      'qoq',
+    ])
   })
 
   it('registers key-value entries as defined names', () => {
@@ -46,8 +53,8 @@ describe('the JSX pipeline', () => {
 
   it('leaves a formula cell empty when the column returns null', () => {
     const pl = compile(budget()).sheets[1]!
-    expect(at(pl, 4, 4)).toEqual({})
-    expect(at(pl, 5, 4)).toMatchObject({ expr: { k: 'op', op: '-' } })
+    expect(at(pl, 4, 5)).toEqual({})
+    expect(at(pl, 5, 5)).toMatchObject({ expr: { k: 'op', op: '-' } })
   })
 
   it('places a Row side by side and honours Spacer', () => {
