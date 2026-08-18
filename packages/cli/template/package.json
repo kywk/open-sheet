@@ -1,0 +1,16 @@
+{
+  "name": "__NAME__",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "open-sheet dev",
+    "build": "open-sheet build --out dist",
+    "preview": "open-sheet preview"
+  },
+  "dependencies": {
+    "@open-sheet/core": "__VERSION__"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
