@@ -73,9 +73,20 @@ Scaffolder 會一起帶上 skills：`/create-sheet`、`/sheet-authoring`、`/cur
 
 **早期開發中。** 尚未發佈到 npm。進度請追蹤 [milestones](https://github.com/lianghsun/open-sheet/milestones)。
 
-這個專案要證明的，是一個很具體的瞬間：
+今天已經能動、而且有測試的部分：
+
+- 編譯器 —— JSX → 量測 → 排版 → 網格，每一個位址都由框架決定
+- 參考系統與公式引擎 —— `serialize()` 與 `evaluate()`、defined names、循環偵測
+- `open-sheet build` —— 產出 `.xlsx`（活公式）與 `.csv`
+- 跨引擎驗證 —— CI 用 LibreOffice 重算匯出的活頁簿並比對
+
+還沒做：viewer 與 dev server、agent skills、MCP server、inspect 模式、themes、HTML/PDF 匯出、圖表。上面的「特色」寫的是這個專案要去的地方；milestones 寫的是它現在在哪。
+
+它要證明的那個瞬間：
 
 > 跑 `/create-sheet` → 下載 `.xlsx` → 用 Excel 打開 → 改 Assumptions 裡的 `growth` → **看整張損益表重新算過。**
+
+其中一半已經成立：`apps/demo` 匯出的活頁簿裡，淨利欄位就是 `=F6*(1-taxRate)`，而測試會去改 `taxRate` 並斷言整欄跟著動 —— 做算術的是 LibreOffice，不是 open-sheet。
 
 ## Repo 結構
 
