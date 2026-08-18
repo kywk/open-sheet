@@ -7,32 +7,37 @@ import type { ResolvedConfig } from './config.js'
 const here = dirname(fileURLToPath(import.meta.url))
 
 /**
+ * Anchored on the package root rather than on hops relative to this file: the
+ * bundler decides which chunk this code lands in, and that has already changed
+ * once — a relative path here breaks silently the next time it does.
+ */
+export function packageRoot(): string {
+  let dir = here
+  for (let i = 0; i < 6; i += 1) {
+    if (existsSync(join(dir, 'package.json')) && existsSync(join(dir, 'src'))) return dir
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  return resolve(here, '..')
+}
+
+/**
  * The viewer lives inside this package while workbooks live in the user's
  * workspace, so Vite's root stays the workspace and the app entry is reached
  * through /@fs. Serving it any other way would put the user's `sheets/` outside
  * the root and break relative imports in their own workbooks.
  */
 export function appEntry(): string {
-  const candidates = [
-    resolve(here, '../app/main.tsx'),
-    resolve(here, '../../src/app/main.tsx'),
-    resolve(here, '../../../src/app/main.tsx'),
-  ]
+  const root = packageRoot()
+  const candidates = [join(root, 'src', 'app', 'main.tsx'), join(root, 'app', 'main.tsx')]
   const found = candidates.find((path) => existsSync(path))
-  if (!found)
+  if (!found) {
     throw new Error(
-      `cannot locate the open-sheet viewer entry (looked in ${candidates.join(', ')})`,
+      `cannot locate the open-sheet viewer entry (package root ${root}; looked in ${candidates.join(', ')})`,
     )
-  return found
-}
-
-export function packageRoot(): string {
-  let dir = here
-  for (let i = 0; i < 5; i += 1) {
-    if (existsSync(join(dir, 'package.json')) && existsSync(join(dir, 'src'))) return dir
-    dir = dirname(dir)
   }
-  return resolve(here, '../..')
+  return found
 }
 
 function shell(entry: string): string {

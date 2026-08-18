@@ -1,3 +1,8 @@
+export { build } from './cli/build.js'
+export { dev } from './cli/dev.js'
+export { discoverSheets } from './cli/discover.js'
+export { createLoader } from './cli/load.js'
+export { preview } from './cli/preview.js'
 export type { CompileOptions } from './compile/compile.js'
 export { compile } from './compile/compile.js'
 export type { ColumnOptions, KeyValueEntry, TableProps } from './compile/components.js'
@@ -26,7 +31,10 @@ export type {
   WorkbookNode,
 } from './compile/nodes.js'
 export type { Anchor, KeyValueAnchor, Registry, TableAnchor } from './compile/registry.js'
+export { toCsv } from './export/csv.js'
 export { NAMED_FORMATS, numberFormat } from './export/formats.js'
+export { toHtml } from './export/html.js'
+export { PlaywrightMissingError, toPdf } from './export/pdf.js'
 export type { WorkbookWriter, WriteOptions } from './export/writer.js'
 export { XlsxWriter } from './export/xlsx.js'
 export type { ValueMap } from './formula/evaluate.js'
@@ -88,10 +96,34 @@ export {
 export type { Cell as CellData, CellValue, SourceLoc } from './model/cell.js'
 export { cellKey, parseCellKey } from './model/cell.js'
 export type { Addr, Rect, Size } from './model/geometry.js'
+export type {
+  CurrentPosition,
+  ExportFormat,
+  ExportResult,
+  ModuleLoader,
+  WorkbookSource,
+  WorkbookSummary,
+} from './ops/index.js'
+export {
+  exportWorkbook,
+  getCurrent,
+  listWorkbooks,
+  NotFoundError,
+  readWorkbook,
+  StaleWriteError,
+  setCurrent,
+  writeWorkbook,
+} from './ops/index.js'
 export type { BlockRef, CellRef, NameRef, RangeRef, Ref, RowContext } from './refs/ref.js'
 export { isRef, ref } from './refs/ref.js'
 export type { ResolveContext, ResolvedRef } from './refs/resolve.js'
 export { refToA1, resolveRef } from './refs/resolve.js'
+export { formatValue, toCssDeclarations, toCssText, toStyleObject } from './style/css.js'
+export { toArgb, toExcelStyle } from './style/excel.js'
+export { DEFAULT_THEME, resolveStyle } from './style/theme.js'
+export type { CellStyle, StyleKey, Theme } from './style/types.js'
+export type { ResolvedConfig } from './vite/config.js'
+export { DEFAULT_PORT, resolveConfig } from './vite/config.js'
 
 export interface SheetMeta {
   title: string

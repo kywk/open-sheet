@@ -1,5 +1,4 @@
 import {
-  Cell,
   col,
   div,
   KpiBand,

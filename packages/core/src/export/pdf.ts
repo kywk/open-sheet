@@ -42,7 +42,9 @@ export async function toPdf(book: CompiledWorkbook, options: PdfOptions = {}): P
   // checker must not require it to be installed, and the bundler must leave the
   // import for runtime.
   const specifier = 'playwright'
-  const playwright = (await import(specifier).catch(() => undefined)) as PlaywrightLike | undefined
+  const playwright = (await import(/* @vite-ignore */ specifier).catch(() => undefined)) as
+    | PlaywrightLike
+    | undefined
   if (!playwright) throw new PlaywrightMissingError()
 
   const html = toHtml(book, options)

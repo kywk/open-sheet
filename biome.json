@@ -1,7 +1,21 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.9/schema.json",
-  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
-  "files": { "includes": ["**", "!**/dist", "!**/node_modules", "!**/.turbo"] },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/.turbo",
+      "!apps/demo/.claude",
+      "!apps/demo/.agents",
+      "!packages/cli/template"
+    ]
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -10,18 +24,27 @@
   },
   "linter": {
     "enabled": true,
-    "rules": { "recommended": true }
+    "rules": {
+      "recommended": true
+    }
   },
   "javascript": {
-    "formatter": { "quoteStyle": "single", "semicolons": "asNeeded" }
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded"
+    }
   },
   "overrides": [
     {
       "includes": ["**/*.test.ts", "**/*.test.tsx", "**/fixtures.tsx"],
       "linter": {
         "rules": {
-          "style": { "noNonNullAssertion": "off" },
-          "suspicious": { "noExplicitAny": "off" }
+          "style": {
+            "noNonNullAssertion": "off"
+          },
+          "suspicious": {
+            "noExplicitAny": "off"
+          }
         }
       }
     },
@@ -33,7 +56,11 @@
         "packages/core/src/jsx-runtime.ts"
       ],
       "linter": {
-        "rules": { "suspicious": { "noExplicitAny": "off" } }
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
+          }
+        }
       }
     }
   ]

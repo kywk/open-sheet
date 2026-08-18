@@ -7,6 +7,7 @@ import { appPlugin, packageRoot } from './app-plugin.js'
 import type { ResolvedConfig } from './config.js'
 import { jsxPlugin } from './jsx-plugin.js'
 import { manifestPlugin } from './manifest-plugin.js'
+import { mcpPlugin } from './mcp-plugin.js'
 
 const require = createRequire(import.meta.url)
 
@@ -71,27 +72,29 @@ function coreAliases(): { find: RegExp; replacement: string }[] {
   return out
 }
 
-export function openSheetPlugins(config: ResolvedConfig): PluginOption[] {
+export function openSheetPlugins(config: ResolvedConfig, mcp = false): PluginOption[] {
   return [
     jsxPlugin(config),
     react({ include: /\/src\/app\/.*\.[jt]sx?$/ }),
     manifestPlugin(config),
     apiPlugin(config),
+    ...(mcp ? [mcpPlugin(config)] : []),
     appPlugin(config),
   ]
 }
 
 export function viteConfigFor(
   config: ResolvedConfig,
-  extra: Partial<InlineConfig> = {},
+  extra: Partial<InlineConfig> & { mcp?: boolean } = {},
 ): InlineConfig {
+  const { mcp, ...rest } = extra
   const root = config.root
   return {
     root,
     configFile: false,
     logLevel: 'warn',
     appType: 'custom',
-    plugins: openSheetPlugins(config),
+    plugins: openSheetPlugins(config, mcp === true),
     resolve: {
       alias: [...coreAliases(), ...reactAliases()],
       dedupe: ['react', 'react-dom'],
@@ -102,7 +105,7 @@ export function viteConfigFor(
       port: config.port,
       fs: { allow: [root, realPath(packageRoot())] },
     },
-    ...extra,
+    ...rest,
   }
 }
 

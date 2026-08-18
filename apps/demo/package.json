@@ -9,5 +9,8 @@
   },
   "dependencies": {
     "@open-sheet/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@open-sheet/mcp": "workspace:*"
   }
 }

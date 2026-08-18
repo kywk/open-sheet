@@ -9,6 +9,8 @@ export interface DevOptions {
   open?: boolean
   /** Disable the file watcher. Useful in containers with low inotify limits. */
   watch?: boolean
+  /** Mount an MCP endpoint at /mcp so any agent framework can drive the workspace. */
+  mcp?: boolean
 }
 
 export async function dev(
@@ -18,7 +20,7 @@ export async function dev(
   const config = resolveConfig(root, options.port ? { port: options.port } : {})
 
   const found = discoverSheets(config.root, config.sheetsDir)
-  const inline = viteConfigFor(config)
+  const inline = viteConfigFor(config, options.mcp ? { mcp: true } : {})
   if (options.host) inline.server = { ...inline.server, host: options.host }
   if (options.watch === false) inline.server = { ...inline.server, watch: null }
 

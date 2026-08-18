@@ -19,6 +19,7 @@ Options:
   --port <n>     Port for dev/preview
   --host <host>  Bind address for dev
   --open         Open a browser (dev)
+  --mcp          Mount an MCP endpoint at /mcp (needs @open-sheet/mcp)
   --no-csv       Skip the per-sheet .csv files
   --html         Also write a self-contained, printable .html
   --pdf          Also write a .pdf (needs playwright installed)
@@ -42,7 +43,10 @@ export async function run(argv: string[]): Promise<number> {
   const port = flag(argv, 'port')
 
   if (command === 'dev') {
-    const options: Parameters<typeof dev>[0] = { open: argv.includes('--open') }
+    const options: Parameters<typeof dev>[0] = {
+      open: argv.includes('--open'),
+      mcp: argv.includes('--mcp'),
+    }
     if (root) options.root = root
     if (port) options.port = Number(port)
     const host = flag(argv, 'host')
