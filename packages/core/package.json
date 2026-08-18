@@ -1,0 +1,21 @@
+{
+  "name": "@open-sheet/core",
+  "version": "0.0.0",
+  "description": "The spreadsheet framework built for agents — runtime, compiler, viewer, and export.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./jsx-runtime": "./src/jsx-runtime.ts",
+    "./jsx-dev-runtime": "./src/jsx-runtime.ts"
+  },
+  "files": ["dist", "skills"],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@formulajs/formulajs": "^4.6.1"
+  }
+}
