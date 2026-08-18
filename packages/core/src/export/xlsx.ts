@@ -1,0 +1,100 @@
+import ExcelJS from 'exceljs'
+import type { CompiledWorkbook } from '../compile/emit.js'
+import { serialize } from '../formula/serialize.js'
+import { type Computed, isExcelError, isNotEvaluated } from '../formula/value.js'
+import { columnName, toA1 } from '../model/a1.js'
+import { type Cell, parseCellKey } from '../model/cell.js'
+import type { ResolveContext } from '../refs/resolve.js'
+import { numberFormat } from './formats.js'
+import type { WorkbookWriter, WriteOptions } from './writer.js'
+
+export class XlsxWriter implements WorkbookWriter {
+  readonly extension = 'xlsx'
+
+  async write(book: CompiledWorkbook, options: WriteOptions = {}): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook()
+    workbook.creator = options.creator ?? 'open-sheet'
+
+    for (const sheet of book.sheets) {
+      const worksheet = workbook.addWorksheet(sheet.name)
+      const context: ResolveContext = {
+        registry: book.registry,
+        definedNames: book.definedNames,
+        sheet: sheet.name,
+      }
+
+      for (const [key, cell] of sheet.cells) {
+        const { r, c } = parseCellKey(key)
+        writeCell(worksheet, r, c, cell, context, options.values)
+      }
+
+      for (const [index, width] of sheet.columnWidths) {
+        worksheet.getColumn(index + 1).width = width
+      }
+
+      if (sheet.freeze && (sheet.freeze.r > 0 || sheet.freeze.c > 0)) {
+        worksheet.views = [
+          {
+            state: 'frozen',
+            xSplit: sheet.freeze.c,
+            ySplit: sheet.freeze.r,
+            topLeftCell: undefined,
+          },
+        ]
+      }
+    }
+
+    for (const [name, target] of book.definedNames) {
+      const address = `${quote(target.sheet)}!${toA1(target.addr, { absoluteRow: true, absoluteCol: true })}`
+      workbook.definedNames.add(address, name)
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer()
+    return Buffer.from(buffer as ArrayBuffer)
+  }
+}
+
+function quote(sheet: string): string {
+  return /^[A-Za-z_][A-Za-z0-9_.]*$/.test(sheet) ? sheet : `'${sheet.replace(/'/g, "''")}'`
+}
+
+function writeCell(
+  worksheet: ExcelJS.Worksheet,
+  r: number,
+  c: number,
+  cell: Cell,
+  context: ResolveContext,
+  values: Map<string, Computed> | undefined,
+): void {
+  const target = worksheet.getCell(r + 1, c + 1)
+
+  if (cell.expr) {
+    const formula = serialize(cell.expr, context)
+    const cached = values?.get(`${context.sheet}!${r},${c}`)
+    const result =
+      cached === undefined || isNotEvaluated(cached) ? undefined : toExcelResult(cached)
+    target.value =
+      result === undefined ? { formula, date1904: false } : { formula, result, date1904: false }
+  } else if (cell.value !== null && cell.value !== undefined) {
+    target.value = cell.value
+  }
+
+  const format = numberFormat(cell.format)
+  if (format) target.numFmt = format
+
+  if (cell.span && (cell.span.rows > 1 || cell.span.cols > 1)) {
+    worksheet.mergeCells(r + 1, c + 1, r + cell.span.rows, c + cell.span.cols)
+  }
+}
+
+type FormulaResult = string | number | boolean | Date | ExcelJS.CellErrorValue | undefined
+
+function toExcelResult(value: Computed): FormulaResult {
+  if (isExcelError(value)) return { error: value.code } as ExcelJS.CellErrorValue
+  if (value === null) return undefined
+  return value as FormulaResult
+}
+
+export function a1(r: number, c: number): string {
+  return `${columnName(c)}${r + 1}`
+}
