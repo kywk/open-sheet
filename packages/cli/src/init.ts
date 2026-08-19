@@ -60,6 +60,26 @@ function skillsDir(root: string): string | undefined {
   return undefined
 }
 
+/**
+ * The three packages version together, so a scaffolder at 0.1.0 pins a framework
+ * at ^0.1.0 — the pair it was actually tested against. `latest` would let a
+ * scaffold made today install a framework released tomorrow.
+ */
+function frameworkVersion(): string {
+  for (const candidate of [
+    join(here, '..', 'package.json'),
+    join(here, '..', '..', 'package.json'),
+  ]) {
+    try {
+      const own = JSON.parse(readFileSync(candidate, 'utf8')) as { name?: string; version?: string }
+      if (own.name === '@open-sheet/cli' && own.version) return `^${own.version}`
+    } catch {
+      // keep looking
+    }
+  }
+  return 'latest'
+}
+
 export function init(options: InitOptions): InitResult {
   const root = resolve(options.cwd ?? process.cwd(), options.directory)
 
@@ -80,7 +100,7 @@ export function init(options: InitOptions): InitResult {
   }
 
   const name = options.directory.split('/').filter(Boolean).pop() ?? 'my-sheets'
-  const version = options.version ?? 'latest'
+  const version = options.version ?? frameworkVersion()
   const packageJson = join(root, 'package.json')
   writeFileSync(
     packageJson,

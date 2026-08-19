@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { init } from './init.js'
 import { detectPackageManager, installCommand, runCommand } from './package-manager.js'
@@ -26,6 +27,18 @@ describe('init', () => {
     expect(manifest.name).toBe('acme-models')
     expect(manifest.dependencies['@open-sheet/core']).toBe('^1.2.3')
     expect(manifest.scripts.dev).toBe('open-sheet dev')
+  })
+
+  it('defaults to the scaffolder’s own version, not `latest`', () => {
+    // The three packages version together, so a scaffold should install the
+    // framework it was tested against rather than whatever ships next.
+    const own = JSON.parse(
+      readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8'),
+    ) as { version: string }
+
+    const result = init({ directory: 'my-sheets', cwd: scratch() })
+    const manifest = JSON.parse(readFileSync(join(result.root, 'package.json'), 'utf8'))
+    expect(manifest.dependencies['@open-sheet/core']).toBe(`^${own.version}`)
   })
 
   it('delivers the skills under both conventions', () => {
