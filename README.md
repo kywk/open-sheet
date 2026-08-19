@@ -2,8 +2,9 @@
 
 <img src=".github/assets/banner.png" alt="open-sheet — a dependency graph drawn across a spreadsheet grid: two cells feeding one" width="100%">
 
+[![npm](https://img.shields.io/npm/v/@open-sheet/core?style=flat&label=%40open-sheet%2Fcore)](https://www.npmjs.com/package/@open-sheet/core)
+[![CI](https://github.com/lianghsun/open-sheet/actions/workflows/ci.yml/badge.svg)](https://github.com/lianghsun/open-sheet/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](https://opensource.org/licenses/MIT)
-[![Status](https://img.shields.io/badge/status-early%20development-orange?style=flat)](https://github.com/lianghsun/open-sheet/milestones)
 
 **English** · [繁體中文](README.zh-TW.md)
 
