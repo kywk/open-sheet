@@ -4,7 +4,8 @@
     "types": ["vitest/globals", "node"],
     "baseUrl": ".",
     "paths": {
-      "@open-sheet/core": ["../core/src/index.ts"]
+      "@open-sheet/core": ["../core/src/index.ts"],
+      "@open-sheet/core/node": ["../core/src/node.ts"]
     }
   },
   "include": ["src/**/*"]

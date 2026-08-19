@@ -20,11 +20,13 @@
     "demo": "pnpm --filter @open-sheet/demo",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "turbo run build && changeset publish"
+    "release": "turbo run build && changeset publish",
+    "test:published": "vitest run --config vitest.e2e.config.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.0",
     "@changesets/cli": "^3.0.0",
+    "playwright": "^1.62.1",
     "turbo": "^2.5.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"

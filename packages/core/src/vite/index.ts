@@ -99,8 +99,19 @@ export function viteConfigFor(
       alias: [...coreAliases(), ...reactAliases()],
       dedupe: ['react', 'react-dom'],
     },
-    // Aliased straight to files, so there is nothing for the pre-bundler to do.
-    optimizeDeps: { exclude: [...REACT_SPECIFIERS] },
+    optimizeDeps: {
+      // Everything the viewer imports that is, or pulls in, CommonJS. Naming
+      // them makes Vite convert the whole graph to ESM in one pass. Left to be
+      // discovered — or excluded, as React was — the browser receives raw
+      // CommonJS, the named import fails, and the viewer dies before it mounts
+      // with nothing on screen but a console error.
+      include: [...REACT_SPECIFIERS, '@formulajs/formulajs'],
+      // Already ESM, and aliased to a real path — but more importantly it
+      // reaches Node-only code (the optional `import('playwright')` behind PDF
+      // export) that the dep optimizer cannot analyse and refuses to bundle.
+      // The browser never calls it; serving the module directly keeps it that way.
+      exclude: ['@open-sheet/core', '@open-sheet/core/jsx-runtime'],
+    },
     server: {
       port: config.port,
       fs: { allow: [root, realPath(packageRoot())] },

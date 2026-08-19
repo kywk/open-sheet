@@ -1,7 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { compile, evaluateWorkbook } from '@open-sheet/core'
 import {
-  compile,
-  evaluateWorkbook,
   exportWorkbook,
   getCurrent,
   listWorkbooks,
@@ -9,7 +8,7 @@ import {
   type ResolvedConfig,
   readWorkbook,
   writeWorkbook,
-} from '@open-sheet/core'
+} from '@open-sheet/core/node'
 import { z } from 'zod'
 import { reportSheet } from './grid.js'
 

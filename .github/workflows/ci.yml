@@ -39,3 +39,20 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y libreoffice-calc
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec vitest run packages/core/src/export/recalc.test.tsx
+
+  # The only job that catches faults existing solely in the packaged shape: it
+  # packs, installs into a clean directory, and drives a browser. Two blank-screen
+  # bugs shipped past status-code checks before this existed.
+  published:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm build
+      - run: pnpm test:published
