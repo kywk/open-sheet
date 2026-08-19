@@ -1,7 +1,7 @@
 {
   "name": "@open-sheet/core",
   "version": "0.0.0",
-  "description": "The spreadsheet framework built for agents — compiler, formula engine, viewer, and export.",
+  "description": "The spreadsheet framework built for agents \u2014 compiler, formula engine, viewer, and export.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -22,7 +22,13 @@
   "files": [
     "dist",
     "bin.js",
-    "skills"
+    "skills",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/**/__fixtures__",
+    "!src/**/fixtures.tsx",
+    "!src/**/e2e"
   ],
   "scripts": {
     "build": "tsdown",

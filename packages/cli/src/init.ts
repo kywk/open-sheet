@@ -1,4 +1,13 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -26,25 +35,29 @@ function templateDir(): string {
 }
 
 /**
- * The skills live in @open-sheet/core so they version with the framework they
- * document. Copying them into the workspace is what makes `/create-sheet`
- * available to the user's agent on day one.
+ * The skills are staged into the template at build time, because `npx
+ * @open-sheet/cli init` installs the scaffolder alone — core is not on disk to
+ * resolve them from. The other lookups are for running out of the monorepo.
  */
-function skillsDir(): string | undefined {
+function skillsDir(root: string): string | undefined {
+  const staged = join(root, 'skills')
+  if (existsSync(join(staged, 'create-sheet', 'SKILL.md'))) return staged
+
   const require = createRequire(import.meta.url)
   try {
     const core = require.resolve('@open-sheet/core/package.json')
     const candidate = join(dirname(core), 'skills')
-    return existsSync(candidate) ? candidate : undefined
+    if (existsSync(candidate)) return candidate
   } catch {
-    for (const candidate of [
-      join(here, '..', '..', 'core', 'skills'),
-      join(here, '..', '..', '..', 'core', 'skills'),
-    ]) {
-      if (existsSync(candidate)) return candidate
-    }
-    return undefined
+    // fall through to the monorepo layout
   }
+  for (const candidate of [
+    join(here, '..', '..', 'core', 'skills'),
+    join(here, '..', '..', '..', 'core', 'skills'),
+  ]) {
+    if (existsSync(candidate)) return candidate
+  }
+  return undefined
 }
 
 export function init(options: InitOptions): InitResult {
@@ -76,7 +89,12 @@ export function init(options: InitOptions): InitResult {
       .replaceAll('__VERSION__', version),
   )
 
-  const skills = skillsDir()
+  // npm strips a leading-dot .gitignore from a published package, so the
+  // template ships it renamed and it is restored here.
+  const shippedIgnore = join(root, 'gitignore')
+  if (existsSync(shippedIgnore)) renameSync(shippedIgnore, join(root, '.gitignore'))
+
+  const skills = skillsDir(root)
   if (skills) {
     // Both conventions, so the workspace works with Claude Code and with agents
     // that read .agents/skills.
@@ -85,6 +103,8 @@ export function init(options: InitOptions): InitResult {
       mkdirSync(destination, { recursive: true })
       cpSync(skills, destination, { recursive: true })
     }
+    // The staging copy has done its job.
+    rmSync(join(root, 'skills'), { recursive: true, force: true })
   }
 
   walk(root)

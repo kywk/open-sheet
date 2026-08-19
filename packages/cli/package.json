@@ -1,7 +1,7 @@
 {
   "name": "@open-sheet/cli",
   "version": "0.0.0",
-  "description": "Scaffolder for open-sheet — the spreadsheet framework built for agents.",
+  "description": "Scaffolder for open-sheet \u2014 the spreadsheet framework built for agents.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -13,9 +13,10 @@
     "template"
   ],
   "scripts": {
-    "build": "tsdown",
+    "build": "node scripts/sync-skills.mjs && tsdown",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "sync-skills": "node scripts/sync-skills.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
