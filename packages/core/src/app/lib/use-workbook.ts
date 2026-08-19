@@ -27,7 +27,10 @@ export function useWorkbook(id: string | undefined): LoadState {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
 
   useEffect(() => {
-    if (!id) return
+    if (!id) {
+      setState({ status: 'loading' })
+      return
+    }
     let cancelled = false
     setState({ status: 'loading' })
 

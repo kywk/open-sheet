@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 // @vitest-environment jsdom
 import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { compile } from '../compile/compile.js'
 import { budget } from '../compile/fixtures.js'
@@ -34,6 +35,27 @@ describe('the viewer', () => {
     const xlsx = screen.getByText('XLSX') as HTMLAnchorElement
     expect(xlsx.getAttribute('href')).toContain('format=xlsx')
     expect(xlsx.getAttribute('href')).toContain('id=fixture-budget')
+  })
+})
+
+describe('the workspace views', () => {
+  it('offers Workbooks, Themes, and Assets', async () => {
+    render(<App />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Themes' })).toBeTruthy())
+    expect(screen.getByRole('button', { name: 'Workbooks' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Assets' })).toBeTruthy()
+  })
+
+  it('switches away from the grid when another view is picked', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await waitFor(() => expect(screen.getAllByText('Fixture Budget').length).toBe(2))
+
+    await user.click(screen.getByRole('button', { name: 'Themes' }))
+    expect(screen.queryByRole('tab', { name: 'P&L' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Workbooks' }))
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'P&L' })).toBeTruthy())
   })
 })
 

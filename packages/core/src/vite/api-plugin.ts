@@ -11,6 +11,7 @@ import {
   setCurrent,
   writeWorkbook,
 } from '../ops/index.js'
+import { listAssets, listThemes, readTheme } from '../ops/workspace.js'
 import type { ResolvedConfig } from './config.js'
 
 const PREFIX = '/__open-sheet/api/'
@@ -76,6 +77,15 @@ export function apiPlugin(config: ResolvedConfig): Plugin {
           if (route === 'current' && req.method === 'POST') {
             const body = (await readBody(req)) as { id?: string; sheet?: string; cell?: string }
             return json(res, 200, setCurrent(config, body, new Date().toISOString()))
+          }
+
+          if (route === 'themes' && req.method === 'GET') {
+            const id = url.searchParams.get('id')
+            return json(res, 200, id ? readTheme(config, id) : { themes: listThemes(config) })
+          }
+
+          if (route === 'assets' && req.method === 'GET') {
+            return json(res, 200, { assets: listAssets(config) })
           }
 
           if (route === 'inspect' && req.method === 'POST') {

@@ -8,6 +8,7 @@ import { Inspector } from './components/Inspector.js'
 import { SheetTabs } from './components/SheetTabs.js'
 import { Sidebar } from './components/Sidebar.js'
 import { Toolbar } from './components/Toolbar.js'
+import { Assets, Themes, type View } from './components/Workspace.js'
 import { type LoadedWorkbook, useManifest, useWorkbook } from './lib/use-workbook.js'
 
 function idFromLocation(): string | undefined {
@@ -18,21 +19,34 @@ function idFromLocation(): string | undefined {
 export function App() {
   const workbooks = useManifest()
   const [activeId, setActiveId] = useState<string | undefined>(idFromLocation)
+  const [view, setView] = useState<View>('workbooks')
   const resolvedId = activeId ?? workbooks[0]?.id
-  const state = useWorkbook(resolvedId)
+  const state = useWorkbook(view === 'workbooks' ? resolvedId : undefined)
 
   const select = (id: string) => {
     setActiveId(id)
+    setView('workbooks')
     window.history.pushState({}, '', `/${encodeURIComponent(id)}`)
   }
 
   return (
     <div className="os-shell">
-      <Sidebar workbooks={workbooks} active={resolvedId} onSelect={select} />
+      <Sidebar
+        workbooks={workbooks}
+        active={resolvedId}
+        view={view}
+        onView={setView}
+        onSelect={select}
+      />
       <main className="os-main">
-        {state.status === 'loading' ? <div className="os-status">Compiling…</div> : null}
+        {view === 'themes' ? <Themes /> : null}
+        {view === 'assets' ? <Assets /> : null}
 
-        {state.status === 'error' ? (
+        {view === 'workbooks' && state.status === 'loading' ? (
+          <div className="os-status">Compiling…</div>
+        ) : null}
+
+        {view === 'workbooks' && state.status === 'error' ? (
           <div className="os-status os-status-error">
             <h2>This workbook did not compile</h2>
             <pre>{state.message}</pre>
@@ -42,7 +56,7 @@ export function App() {
 
         {/* Keyed by id so switching workbooks resets the sheet and selection,
             rather than an effect racing the new compile. */}
-        {state.status === 'ready' ? (
+        {view === 'workbooks' && state.status === 'ready' ? (
           <WorkbookView key={state.workbook.id} workbook={state.workbook} />
         ) : null}
       </main>
