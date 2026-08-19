@@ -1,5 +1,15 @@
 # @open-sheet/core
 
+## 0.1.1
+
+### Patch Changes
+
+- 866ec22: Expose `./package.json` from the exports map, so tooling that reads it — including
+  the scaffolder's own fallback lookup — resolves instead of throwing.
+- 6ac082d: Fix a blank viewer in every published install. `@vitejs/plugin-react` was a
+  devDependency, so it was bundled into `dist` and its Fast Refresh runtime
+  resolved to a file that does not exist there. It is a runtime dependency now.
+
 ## 0.1.0
 
 ### Minor Changes

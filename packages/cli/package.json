@@ -1,6 +1,6 @@
 {
   "name": "@open-sheet/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Scaffolder for open-sheet \u2014 the spreadsheet framework built for agents.",
   "license": "MIT",
   "type": "module",

@@ -1,5 +1,13 @@
 # @open-sheet/mcp
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [866ec22]
+- Updated dependencies [6ac082d]
+  - @open-sheet/core@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
