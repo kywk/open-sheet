@@ -203,7 +203,12 @@ function emitTable(
           cells.set(target, cell)
           return
         }
-        cell.expr = typeof produced === 'string' ? parseFormula(produced).expr : produced
+        cell.expr =
+          typeof produced === 'string'
+            ? parseFormula(produced).expr
+            : typeof produced === 'number' || typeof produced === 'boolean'
+              ? { k: 'lit', v: produced }
+              : produced
       } else if (column.value) {
         cell.value = column.value(dataRow, index)
       } else {

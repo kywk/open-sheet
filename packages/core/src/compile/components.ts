@@ -1,4 +1,4 @@
-import type { Expr } from '../formula/expr.js'
+import type { Expr, Scalar } from '../formula/expr.js'
 import { parseFormula } from '../formula/parse.js'
 import type { CellValue } from '../model/cell.js'
 import type { Addr, Size } from '../model/geometry.js'
@@ -26,7 +26,8 @@ import type {
  * evaluates, and a dev-mode warning points at the structural equivalent — an
  * address written by hand survives exactly until someone inserts a row.
  */
-function asExpr(formula: Expr | string): Expr {
+function asExpr(formula: Expr | Scalar): Expr {
+  if (typeof formula === 'number' || typeof formula === 'boolean') return { k: 'lit', v: formula }
   if (typeof formula !== 'string') return formula
   const parsed = parseFormula(formula)
   if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
@@ -75,7 +76,7 @@ export interface ColumnOptions<T> {
   style?: string
   bar?: boolean | DataBar
   value?: (row: T, index: number) => CellValue
-  formula?: ((row: RowContext<T>) => Expr | string | null | undefined) | string
+  formula?: ((row: RowContext<T>) => Expr | Scalar | null | undefined) | string
 }
 
 export function col<T = any>(key: string, options: ColumnOptions<T> = {}): ColumnSpec<T> {
@@ -154,7 +155,7 @@ export function KpiBand(props: { items: KpiItem[]; style?: string }): KpiBandNod
 
 export function Cell(props: {
   value?: CellValue
-  formula?: Expr | string
+  formula?: Expr | Scalar
   format?: string
   style?: string
   span?: Size

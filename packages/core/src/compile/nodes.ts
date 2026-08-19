@@ -1,4 +1,4 @@
-import type { Expr } from '../formula/expr.js'
+import type { Expr, Scalar } from '../formula/expr.js'
 import type { CellValue } from '../model/cell.js'
 import type { Addr, Size } from '../model/geometry.js'
 import type { RowContext } from '../refs/ref.js'
@@ -23,7 +23,7 @@ export interface ColumnSpec<T = any> {
    * parsed where possible but is not the recommended path — it is exactly what
    * breaks when a row is inserted.
    */
-  formula?: ((row: RowContext<T>) => Expr | string | null | undefined) | string
+  formula?: ((row: RowContext<T>) => Expr | Scalar | null | undefined) | string
 }
 
 export type Aggregate = 'sum' | 'avg' | 'count' | 'min' | 'max'

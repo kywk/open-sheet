@@ -61,11 +61,15 @@ export async function build(options: BuildOptions = {}): Promise<BuildResult[]> 
       files.push(xlsx)
 
       if (options.csv !== false) {
-        for (const sheet of book.sheets) {
-          const csv = join(outDir, `${id}.${safe(sheet.name)}.csv`)
+        const used = new Set<string>()
+        book.sheets.forEach((sheet, index) => {
+          let name = safe(sheet.name, index)
+          if (used.has(name)) name = `${name}-${index + 1}`
+          used.add(name)
+          const csv = join(outDir, `${id}.${name}.csv`)
           writeFileSync(csv, toCsv(sheet, values))
           files.push(csv)
-        }
+        })
       }
 
       if (options.html || options.pdf) {
@@ -94,6 +98,16 @@ export async function build(options: BuildOptions = {}): Promise<BuildResult[]> 
   return results
 }
 
-function safe(name: string): string {
-  return name.replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-|-$/g, '')
+/**
+ * Keeps letters in any script. Stripping to ASCII collapsed every Chinese sheet
+ * name to the empty string, so two sheets produced the same filename and one
+ * silently overwrote the other. Only characters a filesystem objects to are
+ * replaced, and an index is appended if a name still collides.
+ */
+function safe(name: string, index: number): string {
+  const cleaned = name
+    .replace(/[/\\:*?"<>|\u0000-\u001f]+/g, '-')
+    .replace(/^[.\-\s]+|[.\-\s]+$/g, '')
+    .trim()
+  return cleaned === '' ? `sheet-${index + 1}` : cleaned
 }

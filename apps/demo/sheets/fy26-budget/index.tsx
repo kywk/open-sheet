@@ -16,6 +16,7 @@ import {
 } from '@open-sheet/core'
 
 export const meta: SheetMeta = {
+  theme: 'corporate-neutral',
   title: 'FY26 Budget',
   description: 'A four-quarter P&L driven by two assumptions.',
   createdAt: '2026-08-18T00:00:00.000Z',
