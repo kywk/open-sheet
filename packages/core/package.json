@@ -17,7 +17,8 @@
     "./jsx-dev-runtime": {
       "types": "./dist/jsx-runtime.d.mts",
       "default": "./dist/jsx-runtime.mjs"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",

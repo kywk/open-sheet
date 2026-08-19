@@ -15,7 +15,7 @@ If [open-slide](https://github.com/1weiho/open-slide) is Google Slides for agent
 > A workbook baked down to static numbers is just a picture of a table. The value of a spreadsheet is that the person who receives it can change an assumption and watch it recalculate.
 
 ```bash
-npx @open-sheet/cli init my-sheets   # not published yet — see Status
+npx @open-sheet/cli init my-sheets
 ```
 
 ## Why
@@ -80,12 +80,11 @@ formula engine, the viewer and dev server, the skills, the MCP server, inspect
 mode, themes, the design panel, native charts, and all four export formats.
 144 tests, including two that drive a real spreadsheet application.
 
-**Nothing is published to npm yet.** Until then, clone and run the demo workspace:
+Published as `0.1.0`:
 
 ```bash
-git clone https://github.com/lianghsun/open-sheet && cd open-sheet
-pnpm install && pnpm build
-cd apps/demo && pnpm dev
+npx @open-sheet/cli init my-sheets
+cd my-sheets && npm install && npm run dev
 ```
 
 The proof-of-life, which now holds end to end: `apps/demo` exports a workbook

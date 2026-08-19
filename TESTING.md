@@ -1,12 +1,18 @@
 # Trying it before it ships
 
-Nothing is published to npm yet, so everything below runs from a clone. All of it
-is covered by automated tests too — this is the version you can watch happen.
+Published as `0.1.0`. Everything below is covered by automated tests too — this
+is the version you can watch happen.
+
+```bash
+npx @open-sheet/cli init my-sheets
+cd my-sheets && npm install
+```
+
+To work on the framework itself instead:
 
 ```bash
 git clone https://github.com/lianghsun/open-sheet && cd open-sheet
-pnpm install
-pnpm build
+pnpm install && pnpm build
 ```
 
 ## 1. The claim, in one minute
@@ -61,15 +67,13 @@ cell address.
 ## 4. A fresh workspace
 
 ```bash
-cd /tmp
-node <path-to-clone>/packages/cli/bin.js init my-sheets
+cd /tmp && npx @open-sheet/cli init my-sheets
 ```
 
 Verify `.claude/skills/` and `.agents/skills/` both arrived, and that
 `sheets/getting-started/index.tsx` reads as an argument for the whole idea.
 
-*(Until publish, link the framework in by hand:
-`mkdir -p my-sheets/node_modules/@open-sheet && ln -s <clone>/packages/core my-sheets/node_modules/@open-sheet/core`)*
+
 
 ## 5. The MCP server
 

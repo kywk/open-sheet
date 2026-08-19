@@ -15,7 +15,7 @@
 > 一份烤成靜態數字的活頁簿，只是一張表格的照片。試算表的價值在於：收到的人可以改一個假設，然後看它重新算出來。
 
 ```bash
-npx @open-sheet/cli init my-sheets   # 尚未發佈 — 見「目前狀態」
+npx @open-sheet/cli init my-sheets
 ```
 
 ## 為什麼要做
@@ -79,12 +79,11 @@ Scaffolder 會一起帶上 skills：`/create-sheet`、`/sheet-authoring`、`/cur
 skills、MCP server、inspect 模式、themes、design panel、原生圖表，以及四種匯出格式。
 144 個測試，其中兩個會實際驅動真正的試算表應用程式。
 
-**尚未發佈到 npm。** 在那之前，clone 下來跑 demo：
+已發佈 `0.1.0`：
 
 ```bash
-git clone https://github.com/lianghsun/open-sheet && cd open-sheet
-pnpm install && pnpm build
-cd apps/demo && pnpm dev
+npx @open-sheet/cli init my-sheets
+cd my-sheets && npm install && npm run dev
 ```
 
 要證明的那個瞬間，現在端到端成立：`apps/demo` 匯出的活頁簿裡，淨利欄位就是
