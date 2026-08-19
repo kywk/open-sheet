@@ -106,6 +106,7 @@ export async function build(options: BuildOptions = {}): Promise<BuildResult[]> 
  */
 function safe(name: string, index: number): string {
   const cleaned = name
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are exactly what must not reach a filename
     .replace(/[/\\:*?"<>|\u0000-\u001f]+/g, '-')
     .replace(/^[.\-\s]+|[.\-\s]+$/g, '')
     .trim()

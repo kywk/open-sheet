@@ -68,7 +68,7 @@ export function editDesign(source: string, patch: DesignPatch): string {
 
   for (const [group, values] of Object.entries(patch)) {
     const groupProperty = propertyOf(design, group)
-    if (!groupProperty || groupProperty.value?.type !== 'ObjectExpression') {
+    if (groupProperty?.value?.type !== 'ObjectExpression') {
       const entries = Object.entries(values)
         .map(([key, value]) => `${key}: ${literal(value)}`)
         .join(', ')

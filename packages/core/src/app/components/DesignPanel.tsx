@@ -91,7 +91,7 @@ export function DesignPanel({ workbookId, onClose }: Props) {
     }
   }
 
-  const valueOf = (group: string, key: string): string =>
+  const tokenValue = (group: string, key: string): string =>
     String(state?.design?.[group]?.[key] ?? '')
 
   return (
@@ -122,14 +122,14 @@ export function DesignPanel({ workbookId, onClose }: Props) {
                   type="color"
                   className="os-color"
                   disabled={busy}
-                  value={valueOf(token.group, token.key) || '#000000'}
+                  value={tokenValue(token.group, token.key) || '#000000'}
                   onChange={(event) => void apply(token.group, token.key, event.target.value)}
                 />
               ) : (
                 <select
                   id={`os-d-${token.key}`}
                   disabled={busy}
-                  value={valueOf(token.group, token.key)}
+                  value={tokenValue(token.group, token.key)}
                   onChange={(event) => void apply(token.group, token.key, event.target.value)}
                 >
                   <option value="">(theme default)</option>

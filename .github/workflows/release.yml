@@ -25,9 +25,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
-      # Opens (or updates) a release PR while changesets are pending, and
-      # publishes once that PR is merged.
+      # Opens (or updates) a release PR while changesets are pending.
+      # `publish` is only passed once an npm token exists — without it, changesets
+      # runs `changeset publish` on every push and fails trying to publish a
+      # version that is not in the registry.
       - uses: changesets/action@v1
+        if: ${{ secrets.NPM_TOKEN != '' }}
         with:
           version: pnpm version
           publish: pnpm release
@@ -36,3 +39,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - uses: changesets/action@v1
+        if: ${{ secrets.NPM_TOKEN == '' }}
+        with:
+          version: pnpm version
+          commit: 'chore: release'
+          title: 'chore: release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

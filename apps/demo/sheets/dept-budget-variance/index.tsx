@@ -4,7 +4,6 @@ import {
   gt,
   if_,
   KpiBand,
-  mul,
   Note,
   ref,
   Sheet,
