@@ -1,8 +1,11 @@
 export type PackageManager = 'pnpm' | 'npm' | 'yarn' | 'bun'
 
 /**
- * npm sets npm_config_user_agent on every runner, so the scaffolded workspace
- * can suggest the manager the user actually invoked it with.
+ * Every package manager sets npm_config_user_agent when it runs a binary, so the
+ * scaffolded workspace can suggest the one the user actually invoked it with.
+ *
+ * Passing `undefined` reads the environment; pass `''` for "no agent", which is
+ * what a test wants — otherwise it asserts on whatever ran the test.
  */
 export function detectPackageManager(agent = process.env.npm_config_user_agent): PackageManager {
   if (!agent) return 'npm'

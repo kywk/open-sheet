@@ -64,6 +64,9 @@ describe('init', () => {
     const result = init({ directory: 'my-sheets', cwd })
     expect(result.next[0]).toBe('cd my-sheets')
     expect(result.next).toHaveLength(3)
+    // Whichever manager is running this, the steps must name it consistently.
+    const manager = detectPackageManager()
+    expect(result.next[1]).toContain(manager === 'yarn' ? 'yarn' : manager)
   })
 })
 
@@ -73,7 +76,9 @@ describe('package manager detection', () => {
     expect(detectPackageManager('yarn/4.0.0')).toBe('yarn')
     expect(detectPackageManager('bun/1.0.0')).toBe('bun')
     expect(detectPackageManager('npm/10.0.0')).toBe('npm')
-    expect(detectPackageManager(undefined)).toBe('npm')
+    // '' is "no agent"; undefined would read the environment and assert on
+    // whichever manager happens to be running the test.
+    expect(detectPackageManager('')).toBe('npm')
   })
 
   it('phrases commands the way each manager expects', () => {

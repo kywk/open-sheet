@@ -9,11 +9,13 @@ concurrency: release
 permissions:
   contents: write
   pull-requests: write
-  id-token: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      # `secrets` is not available in a step-level `if`, so it is lifted here.
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -25,12 +27,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
-      # Opens (or updates) a release PR while changesets are pending.
-      # `publish` is only passed once an npm token exists — without it, changesets
-      # runs `changeset publish` on every push and fails trying to publish a
-      # version that is not in the registry.
+      # With a token: open a release PR while changesets are pending, and publish
+      # once it merges. Without one: still open the PR, but never run
+      # `changeset publish`, which would fail trying to publish a version that is
+      # not in any registry.
       - uses: changesets/action@v1
-        if: ${{ secrets.NPM_TOKEN != '' }}
+        if: env.HAS_NPM_TOKEN == 'true'
         with:
           version: pnpm version
           publish: pnpm release
@@ -39,9 +41,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - uses: changesets/action@v1
-        if: ${{ secrets.NPM_TOKEN == '' }}
+        if: env.HAS_NPM_TOKEN != 'true'
         with:
           version: pnpm version
           commit: 'chore: release'
