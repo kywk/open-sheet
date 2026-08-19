@@ -2,18 +2,10 @@
   "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
-  "fixed": [
-    [
-      "@open-sheet/core",
-      "@open-sheet/cli",
-      "@open-sheet/mcp"
-    ]
-  ],
+  "fixed": [["@open-sheet/core", "@open-sheet/cli", "@open-sheet/mcp"]],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": [
-    "@open-sheet/demo"
-  ]
+  "ignore": ["@open-sheet/demo"]
 }
