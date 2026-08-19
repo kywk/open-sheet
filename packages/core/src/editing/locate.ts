@@ -202,7 +202,7 @@ export function findEditTarget(source: string, origin: CellOrigin): EditTarget {
 
   const index = origin.row ?? -1
   const row = array.elements?.[index]
-  if (!row || row.type !== 'ObjectExpression') {
+  if (row?.type !== 'ObjectExpression') {
     return { kind: 'unsupported', reason: `data row ${index} is not an object literal` }
   }
 

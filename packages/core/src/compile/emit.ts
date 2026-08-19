@@ -1,4 +1,5 @@
 import { avg, count, type Expr, isExpr, max, min, sum } from '../formula/expr.js'
+import { parseFormula } from '../formula/parse.js'
 import { type Placement, placeSheet } from '../layout/place.js'
 import { type Cell, type CellKey, type CellValue, cellKey } from '../model/cell.js'
 import type { Addr, Rect, Size } from '../model/geometry.js'
@@ -194,12 +195,15 @@ function emitTable(
       const target = cellKey(firstDataRow + index, rect.c + i)
       const cell: Cell = {}
       if (column.formula) {
-        const expr = column.formula(makeRowContext(table.name, table.data, index))
-        if (expr === null || expr === undefined) {
+        const produced =
+          typeof column.formula === 'string'
+            ? column.formula
+            : column.formula(makeRowContext(table.name, table.data, index))
+        if (produced === null || produced === undefined) {
           cells.set(target, cell)
           return
         }
-        cell.expr = expr
+        cell.expr = typeof produced === 'string' ? parseFormula(produced).expr : produced
       } else if (column.value) {
         cell.value = column.value(dataRow, index)
       } else {

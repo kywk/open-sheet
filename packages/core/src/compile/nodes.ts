@@ -18,7 +18,12 @@ export interface ColumnSpec<T = any> {
   /** Draw an in-cell bar across this column's data range. Live in Excel, drawn in HTML. */
   bar?: boolean | DataBar
   value?: (row: T, index: number) => CellValue
-  formula?: (row: RowContext<T>) => Expr | null | undefined
+  /**
+   * A builder expression, or a formula string for compatibility. A string is
+   * parsed where possible but is not the recommended path — it is exactly what
+   * breaks when a row is inserted.
+   */
+  formula?: ((row: RowContext<T>) => Expr | string | null | undefined) | string
 }
 
 export type Aggregate = 'sum' | 'avg' | 'count' | 'min' | 'max'

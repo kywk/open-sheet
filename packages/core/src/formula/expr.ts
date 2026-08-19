@@ -32,11 +32,22 @@ export interface RawExpr {
   src: string
 }
 
-export type Expr = LitExpr | RefExpr | OpExpr | NegExpr | FnExpr | RawExpr
+/**
+ * A literal A1 address or range, from a hand-written formula string. Kept as a
+ * distinct node rather than as `raw` so it can still be evaluated — but kept as
+ * an *address* rather than resolved into a Ref, because it is precisely the
+ * thing that breaks when a row is inserted, and that should stay visible.
+ */
+export interface AddrExpr {
+  k: 'addr'
+  ref: string
+}
+
+export type Expr = LitExpr | RefExpr | OpExpr | NegExpr | FnExpr | RawExpr | AddrExpr
 
 export type ExprInput = Expr | Ref | Scalar
 
-const EXPR_KINDS = new Set(['lit', 'ref', 'op', 'neg', 'fn', 'raw'])
+const EXPR_KINDS = new Set(['lit', 'ref', 'op', 'neg', 'fn', 'raw', 'addr'])
 
 export function isExpr(value: unknown): value is Expr {
   if (typeof value !== 'object' || value === null) return false

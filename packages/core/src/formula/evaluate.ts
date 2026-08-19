@@ -1,4 +1,5 @@
 import type { CompiledWorkbook } from '../compile/emit.js'
+import { fromA1 } from '../model/a1.js'
 import { type Cell, cellKey } from '../model/cell.js'
 import { type ResolveContext, resolveRef } from '../refs/resolve.js'
 import type { BinaryOp, Expr } from './expr.js'
@@ -108,6 +109,11 @@ export function evaluateExpr(expr: Expr, context: ResolveContext, read: Reader):
       return expr.v
     case 'raw':
       return NOT_EVALUATED
+    case 'addr': {
+      const values = readAddr(expr.ref, context, read)
+      if (values.length === 1) return values[0] as Computed
+      return VALUE
+    }
     case 'ref': {
       const values = readRef(expr, context, read)
       if (values.length === 1) return values[0] as Computed
@@ -128,6 +134,20 @@ export function evaluateExpr(expr: Expr, context: ResolveContext, read: Reader):
     case 'fn':
       return applyFn(expr, context, read)
   }
+}
+
+/** Literal addresses from a parsed formula string, read against the current sheet. */
+function readAddr(reference: string, context: ResolveContext, read: Reader): Computed[] {
+  const [start, end] = reference.split(':')
+  const a = fromA1(start as string)
+  const b = end ? fromA1(end) : a
+  const out: Computed[] = []
+  for (let r = Math.min(a.r, b.r); r <= Math.max(a.r, b.r); r += 1) {
+    for (let c = Math.min(a.c, b.c); c <= Math.max(a.c, b.c); c += 1) {
+      out.push(read(context.sheet, r, c))
+    }
+  }
+  return out
 }
 
 function readRef(expr: Expr & { k: 'ref' }, context: ResolveContext, read: Reader): Computed[] {
@@ -219,8 +239,9 @@ function applyFn(expr: Expr & { k: 'fn' }, context: ResolveContext, read: Reader
 
   const args: unknown[] = []
   for (const arg of expr.args) {
-    if (arg.k === 'ref') {
-      const values = readRef(arg, context, read)
+    if (arg.k === 'ref' || arg.k === 'addr') {
+      const values =
+        arg.k === 'ref' ? readRef(arg, context, read) : readAddr(arg.ref, context, read)
       for (const value of values) {
         if (isNotEvaluated(value)) return NOT_EVALUATED
         if (isExcelError(value)) return value

@@ -1,4 +1,5 @@
 import type { Expr } from '../formula/expr.js'
+import { parseFormula } from '../formula/parse.js'
 import type { CellValue } from '../model/cell.js'
 import type { Addr, Size } from '../model/geometry.js'
 import type { RowContext } from '../refs/ref.js'
@@ -19,6 +20,24 @@ import type {
   TableNode,
   WorkbookNode,
 } from './nodes.js'
+
+/**
+ * Formula strings are a compatibility shim. They are parsed so the cell still
+ * evaluates, and a dev-mode warning points at the structural equivalent — an
+ * address written by hand survives exactly until someone inserts a row.
+ */
+function asExpr(formula: Expr | string): Expr {
+  if (typeof formula !== 'string') return formula
+  const parsed = parseFormula(formula)
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
+    const detail = parsed.degraded ? ` (${parsed.reason}; it will show as #NOT_EVALUATED)` : ''
+    process.emitWarning?.(
+      `open-sheet: formula string "${formula}" will not survive a row insert${detail}. ` +
+        'Use r.cell(...) / ref(...) instead — see the sheet-authoring skill.',
+    )
+  }
+  return parsed.expr
+}
 
 export function Workbook(props: { children?: unknown }): WorkbookNode {
   return { kind: 'workbook', children: asSheets(props.children) }
@@ -56,7 +75,7 @@ export interface ColumnOptions<T> {
   style?: string
   bar?: boolean | DataBar
   value?: (row: T, index: number) => CellValue
-  formula?: (row: RowContext<T>) => Expr | null | undefined
+  formula?: ((row: RowContext<T>) => Expr | string | null | undefined) | string
 }
 
 export function col<T = any>(key: string, options: ColumnOptions<T> = {}): ColumnSpec<T> {
@@ -135,14 +154,14 @@ export function KpiBand(props: { items: KpiItem[]; style?: string }): KpiBandNod
 
 export function Cell(props: {
   value?: CellValue
-  formula?: Expr
+  formula?: Expr | string
   format?: string
   style?: string
   span?: Size
 }): CellNode {
   const node: CellNode = { kind: 'cell' }
   if (props.value !== undefined) node.value = props.value
-  if (props.formula !== undefined) node.expr = props.formula
+  if (props.formula !== undefined) node.expr = asExpr(props.formula)
   if (props.format !== undefined) node.format = props.format
   if (props.style !== undefined) node.style = props.style
   if (props.span !== undefined) node.span = props.span

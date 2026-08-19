@@ -19,10 +19,17 @@ const PRECEDENCE: Record<BinaryOp, number> = {
 const NEG_PRECEDENCE = 6
 const ATOM = 100
 
+/** A bare address, range, or name — safe to embed without parentheses. */
+const RAW_ATOM =
+  /^\$?[A-Za-z]{1,3}\$?\d{1,7}(?::\$?[A-Za-z]{1,3}\$?\d{1,7})?$|^[A-Za-z_][A-Za-z0-9_.]*$/
+
 function precedenceOf(expr: Expr): number {
   if (expr.k === 'op') return PRECEDENCE[expr.op]
   if (expr.k === 'neg') return NEG_PRECEDENCE
-  if (expr.k === 'raw') return 0
+  // Arbitrary raw text could be a whole expression, so it is parenthesised —
+  // unless it is plainly a single atom, where parentheses only add noise.
+  if (expr.k === 'raw') return RAW_ATOM.test(expr.src) ? ATOM : 0
+  if (expr.k === 'addr') return ATOM
   return ATOM
 }
 
@@ -44,6 +51,8 @@ export function serialize(input: ExprInput, context: ResolveContext): string {
       return refToA1(expr.target, context)
     case 'raw':
       return expr.src
+    case 'addr':
+      return expr.ref
     case 'neg': {
       const inner = serialize(expr.e, context)
       return precedenceOf(expr.e) < NEG_PRECEDENCE ? `-(${inner})` : `-${inner}`
