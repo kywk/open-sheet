@@ -4,7 +4,9 @@ interface Props {
   workbookId: string
   notEvaluated: number
   inspecting: boolean
+  designing: boolean
   onToggleInspect: () => void
+  onToggleDesign: () => void
 }
 
 const FORMATS = [
@@ -13,7 +15,15 @@ const FORMATS = [
   { format: 'html', label: 'HTML' },
 ] as const
 
-export function Toolbar({ title, workbookId, notEvaluated, inspecting, onToggleInspect }: Props) {
+export function Toolbar({
+  title,
+  workbookId,
+  notEvaluated,
+  inspecting,
+  designing,
+  onToggleInspect,
+  onToggleDesign,
+}: Props) {
   return (
     <header className="os-toolbar">
       <h1>{title}</h1>
@@ -26,6 +36,14 @@ export function Toolbar({ title, workbookId, notEvaluated, inspecting, onToggleI
         </span>
       ) : null}
       <div className="os-spacer" />
+      <button
+        type="button"
+        className={`os-toggle${designing ? ' is-active' : ''}`}
+        aria-pressed={designing}
+        onClick={onToggleDesign}
+      >
+        Design
+      </button>
       <button
         type="button"
         className={`os-toggle${inspecting ? ' is-active' : ''}`}

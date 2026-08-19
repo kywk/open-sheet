@@ -7,8 +7,10 @@ import {
   getCurrent,
   inspectCell,
   listWorkbooks,
+  readDesign,
   readWorkbook,
   setCurrent,
+  writeDesign,
   writeWorkbook,
 } from '../ops/index.js'
 import { listAssets, listThemes, readTheme } from '../ops/workspace.js'
@@ -77,6 +79,23 @@ export function apiPlugin(config: ResolvedConfig): Plugin {
           if (route === 'current' && req.method === 'POST') {
             const body = (await readBody(req)) as { id?: string; sheet?: string; cell?: string }
             return json(res, 200, setCurrent(config, body, new Date().toISOString()))
+          }
+
+          if (route === 'design' && req.method === 'GET') {
+            const id = url.searchParams.get('id')
+            if (!id) return json(res, 400, { error: 'id is required' })
+            return json(res, 200, readDesign(config, id))
+          }
+
+          if (route === 'design' && req.method === 'POST') {
+            const body = (await readBody(req)) as {
+              id?: string
+              patch?: Record<string, Record<string, string | number>>
+              hash?: string
+            }
+            if (!body.id || !body.patch)
+              return json(res, 400, { error: 'id and patch are required' })
+            return json(res, 200, writeDesign(config, body.id, body.patch, body.hash))
           }
 
           if (route === 'themes' && req.method === 'GET') {

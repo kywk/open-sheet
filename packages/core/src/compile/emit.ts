@@ -4,6 +4,7 @@ import { type Placement, placeSheet } from '../layout/place.js'
 import { type Cell, type CellKey, type CellValue, cellKey } from '../model/cell.js'
 import type { Addr, Rect, Size } from '../model/geometry.js'
 import type { Ref } from '../refs/ref.js'
+import type { DesignSystem } from '../style/design.js'
 import type { KeyValueEntry } from './components.js'
 import type { Aggregate, Block, SheetNode, TableNode, WorkbookNode } from './nodes.js'
 import type { Registry, TableAnchor } from './registry.js'
@@ -43,6 +44,8 @@ export interface CompiledWorkbook {
   sheets: CompiledSheet[]
   registry: Registry
   definedNames: Map<string, DefinedName>
+  /** From the module's `design` const; drives the theme for every renderer. */
+  design?: DesignSystem
 }
 
 const AGGREGATES: Record<Aggregate, (expr: Expr) => Expr> = {

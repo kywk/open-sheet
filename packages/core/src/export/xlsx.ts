@@ -5,6 +5,7 @@ import { type Computed, isExcelError, isNotEvaluated } from '../formula/value.js
 import { columnName, rangeToA1, toA1 } from '../model/a1.js'
 import { type Cell, parseCellKey } from '../model/cell.js'
 import type { ResolveContext } from '../refs/resolve.js'
+import { themeFor } from '../style/design.js'
 import { toArgb, toExcelStyle } from '../style/excel.js'
 import { DEFAULT_THEME, resolveStyle } from '../style/theme.js'
 import type { Theme } from '../style/types.js'
@@ -16,7 +17,7 @@ export class XlsxWriter implements WorkbookWriter {
   readonly extension = 'xlsx'
 
   async write(book: CompiledWorkbook, options: WriteOptions = {}): Promise<Buffer> {
-    const theme = options.theme ?? DEFAULT_THEME
+    const theme = themeFor(book.design, options.theme ?? DEFAULT_THEME)
     const workbook = new ExcelJS.Workbook()
     workbook.creator = options.creator ?? 'open-sheet'
     // Excel honours this and recalculates on open. LibreOffice does not — its

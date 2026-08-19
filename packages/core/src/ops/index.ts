@@ -2,7 +2,9 @@ import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { discoverSheets } from '../cli/discover.js'
+import type { WorkbookModule } from '../cli/load.js'
 import { compile } from '../compile/compile.js'
+import { type DesignPatch, editDesign, readDesignLiteral } from '../editing/design-edit.js'
 import { addComment, editCell, NotEditableError } from '../editing/edit.js'
 import { type CellOrigin, findEditTarget, originOf } from '../editing/locate.js'
 import { toCsv } from '../export/csv.js'
@@ -15,9 +17,7 @@ import { fromA1 } from '../model/a1.js'
 import { cellKey } from '../model/cell.js'
 import type { ResolvedConfig } from '../vite/config.js'
 
-export type ModuleLoader = (
-  file: string,
-) => Promise<{ default: unknown; meta?: { title?: string } }>
+export type ModuleLoader = (file: string) => Promise<WorkbookModule>
 
 export interface WorkbookSummary {
   id: string
@@ -145,7 +145,7 @@ export async function exportWorkbook(
 ): Promise<ExportResult> {
   const file = fileFor(config, id)
   const module = await loader(file)
-  const book = compile(module.default)
+  const book = compile(module.default, { design: module.design })
   const values = evaluateWorkbook(book)
   const title = module.meta?.title ?? id
 
@@ -202,7 +202,7 @@ export async function inspectCell(
 ): Promise<InspectResult> {
   const source = readWorkbook(config, request.id)
   const module = await loader(source.file)
-  const book = compile(module.default)
+  const book = compile(module.default, { design: module.design })
   const values = evaluateWorkbook(book)
 
   const addr = fromA1(request.cell)
@@ -263,7 +263,7 @@ export async function editWorkbookCell(
     throw new StaleWriteError(request.id)
 
   const module = await loader(source.file)
-  const book = compile(module.default)
+  const book = compile(module.default, { design: module.design })
   const origin = originOf(book.registry, request.sheet, fromA1(request.cell))
   if (!origin) throw new NotEditableError('this cell is not part of any block')
 
@@ -291,7 +291,7 @@ export async function commentOnCell(
     throw new StaleWriteError(request.id)
 
   const module = await loader(source.file)
-  const book = compile(module.default)
+  const book = compile(module.default, { design: module.design })
   const origin = originOf(book.registry, request.sheet, fromA1(request.cell))
   if (!origin) throw new NotEditableError('this cell is not part of any block')
 
@@ -301,4 +301,32 @@ export async function commentOnCell(
     addComment({ source: source.source, origin, text: request.text }),
     source.hash,
   )
+}
+
+export interface DesignResult {
+  id: string
+  hash: string
+  design?: DesignPatch
+  editable: boolean
+  reason?: string
+}
+
+export function readDesign(config: ResolvedConfig, id: string): DesignResult {
+  const source = readWorkbook(config, id)
+  const design = readDesignLiteral(source.source)
+  const result: DesignResult = { id, hash: source.hash, editable: design !== undefined }
+  if (design) result.design = design
+  else result.reason = 'this workbook has no `export const design = { … }` literal to tweak'
+  return result
+}
+
+export function writeDesign(
+  config: ResolvedConfig,
+  id: string,
+  patch: DesignPatch,
+  hash?: string,
+): WorkbookSource {
+  const source = readWorkbook(config, id)
+  if (hash !== undefined && hash !== source.hash) throw new StaleWriteError(id)
+  return writeWorkbook(config, id, editDesign(source.source, patch), source.hash)
 }

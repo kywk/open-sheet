@@ -46,7 +46,7 @@ export async function build(options: BuildOptions = {}): Promise<BuildResult[]> 
   try {
     for (const { id, file } of found) {
       const module = await loader.load(file)
-      const book = compile(module.default)
+      const book = compile(module.default, { design: module.design })
       const values = evaluateWorkbook(book)
 
       let notEvaluated = 0

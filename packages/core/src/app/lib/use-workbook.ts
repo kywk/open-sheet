@@ -44,7 +44,7 @@ export function useWorkbook(id: string | undefined): LoadState {
       .load()
       .then((module) => {
         if (cancelled) return
-        const book = compile(module.default)
+        const book = compile(module.default, { design: module.design as never })
         const values = evaluateWorkbook(book)
         setState({
           status: 'ready',

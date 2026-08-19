@@ -23,7 +23,8 @@ export const meta: SheetMeta = {
 }
 
 export const design: DesignSystem = {
-  palette: { accent: '#1d4ed8', header: '#0f172a', band: '#f8fafc' },
+  // Tweakable from the viewer's Design panel, which rewrites this literal.
+  palette: { accent: '#1d4ed8', header: '#0f172a', band: '#f8fafc', rule: '#cbd5e1' },
   formats: { currency: '#,##0', percent: '0.0%' },
 }
 

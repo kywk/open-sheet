@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { isNotEvaluated } from '../formula/value.js'
 import { toA1 } from '../model/a1.js'
+import { DesignPanel } from './components/DesignPanel.js'
 import { FormulaBar } from './components/FormulaBar.js'
 import { Grid, type Selection } from './components/Grid.js'
 import { Inspector } from './components/Inspector.js'
@@ -67,7 +68,7 @@ export function App() {
 function WorkbookView({ workbook }: { workbook: LoadedWorkbook }) {
   const [sheetIndex, setSheetIndex] = useState(0)
   const [selection, setSelection] = useState<Selection>({ r: 0, c: 0 })
-  const [inspecting, setInspecting] = useState(false)
+  const [panel, setPanel] = useState<'none' | 'inspect' | 'design'>('none')
 
   const sheet = workbook.book.sheets[sheetIndex]
   const sheetName = sheet?.name
@@ -91,8 +92,10 @@ function WorkbookView({ workbook }: { workbook: LoadedWorkbook }) {
         title={workbook.title}
         workbookId={workbook.id}
         notEvaluated={countSkipped(workbook.values)}
-        inspecting={inspecting}
-        onToggleInspect={() => setInspecting((on) => !on)}
+        inspecting={panel === 'inspect'}
+        designing={panel === 'design'}
+        onToggleInspect={() => setPanel((p) => (p === 'inspect' ? 'none' : 'inspect'))}
+        onToggleDesign={() => setPanel((p) => (p === 'design' ? 'none' : 'design'))}
       />
       <FormulaBar
         book={workbook.book}
@@ -110,13 +113,16 @@ function WorkbookView({ workbook }: { workbook: LoadedWorkbook }) {
             onSelect={setSelection}
           />
         ) : null}
-        {inspecting && sheetName ? (
+        {panel === 'inspect' && sheetName ? (
           <Inspector
             workbookId={workbook.id}
             sheet={sheetName}
             selection={selection}
-            onClose={() => setInspecting(false)}
+            onClose={() => setPanel('none')}
           />
+        ) : null}
+        {panel === 'design' ? (
+          <DesignPanel workbookId={workbook.id} onClose={() => setPanel('none')} />
         ) : null}
       </div>
       <SheetTabs book={workbook.book} active={sheetIndex} onSelect={setSheetIndex} />

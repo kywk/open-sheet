@@ -35,6 +35,8 @@ export type {
   WorkbookNode,
 } from './compile/nodes.js'
 export type { Anchor, KeyValueAnchor, Registry, TableAnchor } from './compile/registry.js'
+export type { DesignPatch } from './editing/design-edit.js'
+export { editDesign, readDesignLiteral } from './editing/design-edit.js'
 export {
   addComment,
   ChangedUnderfootError,
@@ -161,8 +163,5 @@ export interface OpenSheetConfig {
   port?: number
 }
 
-export interface DesignSystem {
-  palette?: Record<string, string>
-  fonts?: Record<string, string>
-  formats?: Record<string, string>
-}
+export type { DesignSystem } from './style/design.js'
+export { applyDesign, DESIGN_TOKENS, designFormat, themeFor } from './style/design.js'

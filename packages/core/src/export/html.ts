@@ -4,6 +4,7 @@ import { columnName } from '../model/a1.js'
 import { parseCellKey } from '../model/cell.js'
 import { type ResolveContext, resolveRef } from '../refs/resolve.js'
 import { formatValue, toCssText } from '../style/css.js'
+import { themeFor } from '../style/design.js'
 import { DEFAULT_THEME, resolveStyle } from '../style/theme.js'
 import { mergeStyle, type Theme } from '../style/types.js'
 import { chartSvg, numberOf, seriesColor } from './svg-chart.js'
@@ -26,7 +27,7 @@ interface Covered {
 }
 
 export function toHtml(book: CompiledWorkbook, options: HtmlOptions = {}): string {
-  const theme = options.theme ?? DEFAULT_THEME
+  const theme = themeFor(book.design, options.theme ?? DEFAULT_THEME)
   // Charts resolve their ranges, so they need the workbook's registry.
   options = { registry: book.registry, definedNames: book.definedNames, ...options }
   const sheets = book.sheets.map((sheet) => renderSheet(sheet, theme, options)).join('\n')

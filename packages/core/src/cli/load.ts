@@ -1,9 +1,10 @@
 import { createServer, type ViteDevServer } from 'vite'
+import type { DesignSystem } from '../style/design.js'
 
 export interface WorkbookModule {
   default: unknown
   meta?: { title?: string }
-  design?: unknown
+  design?: DesignSystem
 }
 
 /**
