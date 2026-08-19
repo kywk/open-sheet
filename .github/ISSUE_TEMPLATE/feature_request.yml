@@ -1,0 +1,27 @@
+name: Feature request
+description: Something open-sheet should be able to do
+labels: []
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: >
+        Describe the workbook you are trying to build, not the feature you think
+        would allow it. The best solution is often a different one.
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: How you are working around it today
+  - type: checkboxes
+    id: live
+    attributes:
+      label: Would this stay live in Excel?
+      description: >
+        Anything that lands in an exported workbook has to recalculate when the
+        numbers change. A feature that bakes values is one this project will
+        probably decline.
+      options:
+        - label: Yes, or it does not affect the exported workbook

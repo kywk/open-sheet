@@ -17,10 +17,15 @@
     "core": "pnpm --filter @open-sheet/core",
     "cli": "pnpm --filter @open-sheet/cli",
     "mcp": "pnpm --filter @open-sheet/mcp",
-    "demo": "pnpm --filter @open-sheet/demo"
+    "demo": "pnpm --filter @open-sheet/demo",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "turbo run build && changeset publish"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.0",
+    "@changesets/changelog-github": "^1.0.0",
+    "@changesets/cli": "^3.0.0",
     "turbo": "^2.5.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"

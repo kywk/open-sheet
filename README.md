@@ -75,20 +75,23 @@ Skills ship with the scaffolder: `/create-sheet`, `/sheet-authoring`, `/current-
 
 **Early development.** Nothing is published to npm yet. Follow the [milestones](https://github.com/lianghsun/open-sheet/milestones).
 
-Working today, with tests:
+Everything described above is built and tested — the compiler, references and the
+formula engine, the viewer and dev server, the skills, the MCP server, inspect
+mode, themes, the design panel, native charts, and all four export formats.
+144 tests, including two that drive a real spreadsheet application.
 
-- The compiler — JSX → measure → place → grid, with the framework owning every address
-- References and the formula engine — `serialize()` and `evaluate()`, defined names, cycle detection
-- `open-sheet build` — writes `.xlsx` (live formulas) and `.csv`
-- The cross-engine check — CI recalculates the exported workbook in LibreOffice and diffs it
+**Nothing is published to npm yet.** Until then, clone and run the demo workspace:
 
-Not built yet: the viewer and dev server, agent skills, the MCP server, inspect mode, themes, HTML/PDF export, and charts. The Highlights above describe where this is going; the milestones say where it is.
+```bash
+git clone https://github.com/lianghsun/open-sheet && cd open-sheet
+pnpm install && pnpm build
+cd apps/demo && pnpm dev
+```
 
-The proof-of-life it is building toward:
-
-> Run `/create-sheet` → download the `.xlsx` → open it in Excel → change `growth` in Assumptions → **watch the whole P&L recalculate.**
-
-Half of that already holds: `apps/demo` exports a workbook whose net-income column is `=F6*(1-taxRate)`, and a test changes `taxRate` and asserts the column moves — with LibreOffice, not open-sheet, doing the arithmetic.
+The proof-of-life, which now holds end to end: `apps/demo` exports a workbook
+whose net-income column is `=F6*(1-taxRate)`, and a test changes `taxRate` and
+asserts the whole column moves — with LibreOffice, not open-sheet, doing the
+arithmetic.
 
 ## Repo layout
 

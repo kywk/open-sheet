@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "changelog": ["@changesets/changelog-github", { "repo": "lianghsun/open-sheet" }],
+  "commit": false,
+  "fixed": [["@open-sheet/core", "@open-sheet/cli", "@open-sheet/mcp"]],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": ["@open-sheet/demo"]
+}
