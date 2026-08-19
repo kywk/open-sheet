@@ -72,6 +72,29 @@ describe('the dev server', () => {
       expect(manifest, 'virtual manifest lists the workbook').toContain('"smoke"')
       expect(manifest).toContain('import(')
 
+      // The browser requests this before anything renders. Fetching only the
+      // entry module missed a shipped bug where @vitejs/plugin-react had been
+      // bundled into dist and its refresh runtime resolved to a file that did
+      // not exist — the viewer was blank for every published install.
+      const refresh = await fetch(`${base}/@react-refresh`)
+      expect(refresh.status, 'react refresh runtime').toBe(200)
+
+      // Every module the viewer pulls in, not just the entry.
+      const entryDir = (html.match(/src="(\/@fs[^"]*)\/main\.tsx"/) as RegExpMatchArray)[1]
+      for (const module of [
+        'App.tsx',
+        'components/Grid.tsx',
+        'components/FormulaBar.tsx',
+        'components/Inspector.tsx',
+        'components/DesignPanel.tsx',
+        'components/Workspace.tsx',
+        'lib/use-workbook.ts',
+        'styles.css',
+      ]) {
+        const response = await fetch(`${base}${entryDir}/${module}`)
+        expect(response.status, module).toBe(200)
+      }
+
       const module = await (await fetch(`${base}/sheets/smoke/index.tsx`)).text()
       expect(module, 'jsx pragma injected').toContain('@jsxImportSource @open-sheet/core')
       expect(module, 'workbook must not compile against React').not.toMatch(

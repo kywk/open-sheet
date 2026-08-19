@@ -39,6 +39,7 @@
   "dependencies": {
     "@babel/parser": "^8.0.4",
     "@formulajs/formulajs": "^4.6.1",
+    "@vitejs/plugin-react": "^6.0.5",
     "exceljs": "^4.4.0",
     "fflate": "^0.8.3",
     "react": "^19.2.8",
@@ -53,7 +54,6 @@
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "@vitejs/plugin-react": "^6.0.5",
     "jsdom": "^30.0.1",
     "tsdown": "^0.22.14"
   },
