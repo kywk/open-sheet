@@ -13,11 +13,10 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    # Nothing to do until the packages are publishable. Without a token this job
-    # can only open a release PR nobody can merge into a release — and doing that
-    # also needs "Allow GitHub Actions to create and approve pull requests" in the
-    # repository settings. Add NPM_TOKEN and enable that, and this activates.
-    if: ${{ secrets.NPM_TOKEN != '' }}
+    env:
+      # `secrets` is available in neither a job-level nor a step-level `if`, so
+      # it is lifted into an env value that both can read.
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -31,7 +30,13 @@ jobs:
 
       # Opens (or updates) a release PR while changesets are pending, and
       # publishes once that PR is merged.
+      #
+      # Skipped until the packages are publishable: without a token this can only
+      # open a release PR that leads nowhere, and opening one also needs "Allow
+      # GitHub Actions to create and approve pull requests" enabled on the
+      # repository. Add NPM_TOKEN and enable that, and this activates.
       - uses: changesets/action@v1
+        if: env.HAS_NPM_TOKEN == 'true'
         with:
           version: pnpm version
           publish: pnpm release
@@ -41,3 +46,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Release is not configured
+        if: env.HAS_NPM_TOKEN != 'true'
+        run: echo "No NPM_TOKEN — built and verified, but nothing to publish." >> "$GITHUB_STEP_SUMMARY"
