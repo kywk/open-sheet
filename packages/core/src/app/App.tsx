@@ -4,6 +4,7 @@ import { isNotEvaluated } from '../formula/value.js'
 import { toA1 } from '../model/a1.js'
 import { FormulaBar } from './components/FormulaBar.js'
 import { Grid, type Selection } from './components/Grid.js'
+import { Inspector } from './components/Inspector.js'
 import { SheetTabs } from './components/SheetTabs.js'
 import { Sidebar } from './components/Sidebar.js'
 import { Toolbar } from './components/Toolbar.js'
@@ -52,6 +53,7 @@ export function App() {
 function WorkbookView({ workbook }: { workbook: LoadedWorkbook }) {
   const [sheetIndex, setSheetIndex] = useState(0)
   const [selection, setSelection] = useState<Selection>({ r: 0, c: 0 })
+  const [inspecting, setInspecting] = useState(false)
 
   const sheet = workbook.book.sheets[sheetIndex]
   const sheetName = sheet?.name
@@ -75,6 +77,8 @@ function WorkbookView({ workbook }: { workbook: LoadedWorkbook }) {
         title={workbook.title}
         workbookId={workbook.id}
         notEvaluated={countSkipped(workbook.values)}
+        inspecting={inspecting}
+        onToggleInspect={() => setInspecting((on) => !on)}
       />
       <FormulaBar
         book={workbook.book}
@@ -82,15 +86,25 @@ function WorkbookView({ workbook }: { workbook: LoadedWorkbook }) {
         sheetIndex={sheetIndex}
         selection={selection}
       />
-      {sheet ? (
-        <Grid
-          key={sheetIndex}
-          sheet={sheet}
-          values={workbook.values}
-          selection={selection}
-          onSelect={setSelection}
-        />
-      ) : null}
+      <div className="os-body">
+        {sheet ? (
+          <Grid
+            key={sheetIndex}
+            sheet={sheet}
+            values={workbook.values}
+            selection={selection}
+            onSelect={setSelection}
+          />
+        ) : null}
+        {inspecting && sheetName ? (
+          <Inspector
+            workbookId={workbook.id}
+            sheet={sheetName}
+            selection={selection}
+            onClose={() => setInspecting(false)}
+          />
+        ) : null}
+      </div>
       <SheetTabs book={workbook.book} active={sheetIndex} onSelect={setSheetIndex} />
     </>
   )

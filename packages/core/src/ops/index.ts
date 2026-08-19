@@ -3,10 +3,16 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { discoverSheets } from '../cli/discover.js'
 import { compile } from '../compile/compile.js'
+import { addComment, editCell, NotEditableError } from '../editing/edit.js'
+import { type CellOrigin, findEditTarget, originOf } from '../editing/locate.js'
 import { toCsv } from '../export/csv.js'
 import { toHtml } from '../export/html.js'
 import { XlsxWriter } from '../export/xlsx.js'
 import { evaluateWorkbook } from '../formula/evaluate.js'
+import { toFormula } from '../formula/serialize.js'
+import { display } from '../formula/value.js'
+import { fromA1 } from '../model/a1.js'
+import { cellKey } from '../model/cell.js'
 import type { ResolvedConfig } from '../vite/config.js'
 
 export type ModuleLoader = (
@@ -164,4 +170,135 @@ export async function exportWorkbook(
     contentType: 'text/csv; charset=utf-8',
     body: toCsv(sheet, values),
   }
+}
+
+export interface InspectRequest {
+  id: string
+  sheet: string
+  cell: string
+}
+
+export interface InspectResult {
+  id: string
+  file: string
+  sheet: string
+  cell: string
+  hash: string
+  origin?: CellOrigin
+  formula?: string
+  value?: string
+  editable: boolean
+  /** Present when the cell holds a literal — the current source text. */
+  current?: string
+  /** file:line of the construct that produced it. */
+  location?: string
+  reason?: string
+}
+
+export async function inspectCell(
+  config: ResolvedConfig,
+  request: InspectRequest,
+  loader: ModuleLoader,
+): Promise<InspectResult> {
+  const source = readWorkbook(config, request.id)
+  const module = await loader(source.file)
+  const book = compile(module.default)
+  const values = evaluateWorkbook(book)
+
+  const addr = fromA1(request.cell)
+  const origin = originOf(book.registry, request.sheet, addr)
+
+  const result: InspectResult = {
+    id: request.id,
+    file: source.file,
+    sheet: request.sheet,
+    cell: request.cell,
+    hash: source.hash,
+    editable: false,
+  }
+  if (!origin) {
+    result.reason = 'this cell is not part of any block'
+    return result
+  }
+  result.origin = origin
+
+  const sheet = book.sheets.find((candidate) => candidate.name === request.sheet)
+  const cell = sheet?.cells.get(cellKey(addr.r, addr.c))
+  if (cell?.expr && sheet) {
+    result.formula = toFormula(cell.expr, {
+      registry: book.registry,
+      definedNames: book.definedNames,
+      sheet: sheet.name,
+    })
+  }
+  const computed = cell?.expr
+    ? values.get(`${request.sheet}!${cellKey(addr.r, addr.c)}`)
+    : cell?.value
+  result.value = display(computed ?? null)
+
+  const target = findEditTarget(source.source, origin)
+  result.editable = target.kind === 'literal'
+  if (target.range) {
+    result.current = target.range.text
+    result.location = `${source.file}:${target.range.line}`
+  }
+  if (target.reason) result.reason = target.reason
+
+  return result
+}
+
+export interface EditCellRequest extends InspectRequest {
+  value: string
+  expected?: string
+  hash?: string
+}
+
+export async function editWorkbookCell(
+  config: ResolvedConfig,
+  request: EditCellRequest,
+  loader: ModuleLoader,
+): Promise<WorkbookSource> {
+  const source = readWorkbook(config, request.id)
+  if (request.hash !== undefined && request.hash !== source.hash)
+    throw new StaleWriteError(request.id)
+
+  const module = await loader(source.file)
+  const book = compile(module.default)
+  const origin = originOf(book.registry, request.sheet, fromA1(request.cell))
+  if (!origin) throw new NotEditableError('this cell is not part of any block')
+
+  const next = editCell({
+    source: source.source,
+    origin,
+    value: request.value,
+    ...(request.expected === undefined ? {} : { expected: request.expected }),
+  })
+  return writeWorkbook(config, request.id, next, source.hash)
+}
+
+export interface CommentCellRequest extends InspectRequest {
+  text: string
+  hash?: string
+}
+
+export async function commentOnCell(
+  config: ResolvedConfig,
+  request: CommentCellRequest,
+  loader: ModuleLoader,
+): Promise<WorkbookSource> {
+  const source = readWorkbook(config, request.id)
+  if (request.hash !== undefined && request.hash !== source.hash)
+    throw new StaleWriteError(request.id)
+
+  const module = await loader(source.file)
+  const book = compile(module.default)
+  const origin = originOf(book.registry, request.sheet, fromA1(request.cell))
+  if (!origin) throw new NotEditableError('this cell is not part of any block')
+
+  return writeWorkbook(
+    config,
+    request.id,
+    addComment({ source: source.source, origin, text: request.text }),
+    source.hash,
+  )
 }

@@ -5,9 +5,11 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { dev } from './dev.js'
 
-const WORKBOOK = `import { Cell, Sheet, Stack, Table, Workbook, col, ref, sum } from '@open-sheet/core'
+const WORKBOOK = `import { Cell, Sheet, Stack, Table, Workbook, col, mul, ref, sum } from '@open-sheet/core'
 
 export const meta = { title: 'Smoke Test' }
+
+const rows = [{ n: 1 }, { n: 2 }, { n: 3 }]
 
 export default (
   <Workbook>
@@ -15,8 +17,11 @@ export default (
       <Stack gap={1}>
         <Table
           name="rows"
-          data={[{ n: 1 }, { n: 2 }, { n: 3 }]}
-          columns={[col('n', { header: 'N' })]}
+          data={rows}
+          columns={[
+            col('n', { header: 'N' }),
+            col('doubled', { header: 'Doubled', formula: (r) => mul(r.cell('n'), 2) }),
+          ]}
           total={{ n: 'sum' }}
         />
         <Cell formula={sum(ref('rows').column('n'))} />
@@ -110,6 +115,66 @@ describe('the dev server', () => {
       await stale.text()
       expect(stale.status, 'stale write refused').toBe(409)
       expect(read.source).toContain('Smoke Test')
+
+      // Inspect: the useful answer is which construct produced the cell, not its address.
+      const inspected = (await (
+        await fetch(`${base}/__open-sheet/api/inspect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: 'smoke', sheet: 'Data', cell: 'A3' }),
+        })
+      ).json()) as {
+        origin: { block: string; column: string; row: number }
+        editable: boolean
+        current: string
+        location: string
+      }
+      expect(inspected.origin).toMatchObject({ block: 'rows', column: 'n', row: 1 })
+      expect(inspected.editable, 'a literal data cell is editable').toBe(true)
+      expect(inspected.current).toBe('2')
+      expect(inspected.location).toMatch(/index\.tsx:\d+$/)
+
+      // A computed column is not editable, and says what to change instead.
+      const computed = (await (
+        await fetch(`${base}/__open-sheet/api/inspect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: 'smoke', sheet: 'Data', cell: 'B3' }),
+        })
+      ).json()) as { editable: boolean; formula: string; reason: string }
+      expect(computed.editable).toBe(false)
+      expect(computed.formula).toBe('=A3*2')
+      expect(computed.reason).toContain('computed, not stored')
+
+      // Edit: writes back into the array the value actually came from.
+      const edited = await fetch(`${base}/__open-sheet/api/edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: 'smoke',
+          sheet: 'Data',
+          cell: 'A3',
+          value: '20',
+          expected: '2',
+        }),
+      })
+      const written = (await edited.json()) as { source: string }
+      expect(edited.status).toBe(200)
+      expect(written.source, 'the edited element').toContain('{ n: 20 }')
+      expect(written.source, 'its neighbours untouched').toContain(
+        '[{ n: 1 }, { n: 20 }, { n: 3 }]',
+      )
+
+      // Comment: stored where /apply-comments will find it.
+      const commented = await fetch(`${base}/__open-sheet/api/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: 'smoke', sheet: 'Data', cell: 'A3', text: 'is this net?' }),
+      })
+      const withNote = (await commented.json()) as { source: string }
+      expect(commented.status).toBe(200)
+      expect(withNote.source).toContain('@sheet-comment')
+      expect(withNote.source).toContain('is this net?')
 
       const missing = await fetch(`${base}/__open-sheet/api/source?id=nope`)
       const error = (await missing.json()) as { error: string }

@@ -1,8 +1,11 @@
 import type { Connect, Plugin, ViteDevServer } from 'vite'
 import {
+  commentOnCell,
   type ExportFormat,
+  editWorkbookCell,
   exportWorkbook,
   getCurrent,
+  inspectCell,
   listWorkbooks,
   readWorkbook,
   setCurrent,
@@ -73,6 +76,26 @@ export function apiPlugin(config: ResolvedConfig): Plugin {
           if (route === 'current' && req.method === 'POST') {
             const body = (await readBody(req)) as { id?: string; sheet?: string; cell?: string }
             return json(res, 200, setCurrent(config, body, new Date().toISOString()))
+          }
+
+          if (route === 'inspect' && req.method === 'POST') {
+            const body = (await readBody(req)) as { id?: string; sheet?: string; cell?: string }
+            if (!body.id || !body.sheet || !body.cell) {
+              return json(res, 400, { error: 'id, sheet and cell are required' })
+            }
+            return json(res, 200, await inspectCell(config, body as never, loader))
+          }
+
+          if (route === 'edit' && req.method === 'POST') {
+            const body = (await readBody(req)) as { value?: string }
+            if (body.value === undefined) return json(res, 400, { error: 'value is required' })
+            return json(res, 200, await editWorkbookCell(config, body as never, loader))
+          }
+
+          if (route === 'comment' && req.method === 'POST') {
+            const body = (await readBody(req)) as { text?: string }
+            if (!body.text) return json(res, 400, { error: 'text is required' })
+            return json(res, 200, await commentOnCell(config, body as never, loader))
           }
 
           if (route === 'export' && req.method === 'GET') {

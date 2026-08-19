@@ -31,6 +31,15 @@ export type {
   WorkbookNode,
 } from './compile/nodes.js'
 export type { Anchor, KeyValueAnchor, Registry, TableAnchor } from './compile/registry.js'
+export {
+  addComment,
+  ChangedUnderfootError,
+  editCell,
+  listComments,
+  NotEditableError,
+} from './editing/edit.js'
+export type { CellOrigin, EditTarget, SourceRange } from './editing/locate.js'
+export { findEditTarget, originOf } from './editing/locate.js'
 export { toCsv } from './export/csv.js'
 export { NAMED_FORMATS, numberFormat } from './export/formats.js'
 export { toHtml } from './export/html.js'
@@ -97,16 +106,23 @@ export type { Cell as CellData, CellValue, SourceLoc } from './model/cell.js'
 export { cellKey, parseCellKey } from './model/cell.js'
 export type { Addr, Rect, Size } from './model/geometry.js'
 export type {
+  CommentCellRequest,
   CurrentPosition,
+  EditCellRequest,
   ExportFormat,
   ExportResult,
+  InspectRequest,
+  InspectResult,
   ModuleLoader,
   WorkbookSource,
   WorkbookSummary,
 } from './ops/index.js'
 export {
+  commentOnCell,
+  editWorkbookCell,
   exportWorkbook,
   getCurrent,
+  inspectCell,
   listWorkbooks,
   NotFoundError,
   readWorkbook,
