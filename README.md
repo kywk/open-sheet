@@ -93,6 +93,9 @@ whose net-income column is `=F6*(1-taxRate)`, and a test changes `taxRate` and
 asserts the whole column moves — with LibreOffice, not open-sheet, doing the
 arithmetic.
 
+
+Trying it before it ships: [TESTING.md](TESTING.md).
+
 ## Repo layout
 
 pnpm + Turbo monorepo.

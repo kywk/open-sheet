@@ -91,6 +91,9 @@ cd apps/demo && pnpm dev
 `=F6*(1-taxRate)`，而測試會去改 `taxRate` 並斷言整欄跟著動 —— 做算術的是
 LibreOffice，不是 open-sheet。
 
+
+發佈前想先自己測：[TESTING.md](TESTING.md)。
+
 ## Repo 結構
 
 pnpm + Turbo monorepo。
