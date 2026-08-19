@@ -1,7 +1,7 @@
 import type { Expr, Scalar } from '../formula/expr.js'
 import type { CellValue } from '../model/cell.js'
 import type { Addr, Size } from '../model/geometry.js'
-import type { RowContext } from '../refs/ref.js'
+import type { Ref, RowContext } from '../refs/ref.js'
 
 export interface DataBar {
   color?: string
@@ -85,13 +85,39 @@ export interface NoteNode {
   style?: string
 }
 
+export type ChartKind = 'bar' | 'line' | 'pie'
+
+export interface ChartSeries {
+  name: string
+  /** A column reference; resolved to a range after layout, like any other. */
+  values: Ref
+}
+
+export interface ChartNode {
+  kind: 'chart'
+  chart: ChartKind
+  title?: string
+  categories: Ref
+  series: ChartSeries[]
+  rows: number
+  cols: number
+}
+
 export interface SpacerNode {
   kind: 'spacer'
   rows: number
   cols: number
 }
 
-export type Block = StackNode | RowNode | TableNode | KpiBandNode | CellNode | NoteNode | SpacerNode
+export type Block =
+  | StackNode
+  | RowNode
+  | TableNode
+  | KpiBandNode
+  | CellNode
+  | NoteNode
+  | SpacerNode
+  | ChartNode
 
 export interface SheetNode {
   kind: 'sheet'
@@ -106,7 +132,7 @@ export interface WorkbookNode {
   children: SheetNode[]
 }
 
-const BLOCK_KINDS = new Set(['stack', 'row', 'table', 'kpiBand', 'cell', 'note', 'spacer'])
+const BLOCK_KINDS = new Set(['stack', 'row', 'table', 'kpiBand', 'cell', 'note', 'spacer', 'chart'])
 
 export function isBlock(value: unknown): value is Block {
   if (typeof value !== 'object' || value === null) return false

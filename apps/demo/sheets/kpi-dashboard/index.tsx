@@ -1,4 +1,5 @@
 import {
+  Chart,
   col,
   div,
   gte,
@@ -141,6 +142,18 @@ export default (
             netAdds: 'sum',
             mrrAdded: 'sum',
           }}
+        />
+
+        <Chart
+          kind="line"
+          title="Trials by month"
+          categories={ref('funnel').column('month')}
+          series={[
+            { name: 'Trials', values: ref('funnel').column('trials') },
+            { name: 'Paid', values: ref('funnel').column('paid') },
+          ]}
+          rows={16}
+          cols={7}
         />
 
         <Note cols={8}>

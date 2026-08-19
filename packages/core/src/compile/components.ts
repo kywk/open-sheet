@@ -2,12 +2,15 @@ import type { Expr, Scalar } from '../formula/expr.js'
 import { parseFormula } from '../formula/parse.js'
 import type { CellValue } from '../model/cell.js'
 import type { Addr, Size } from '../model/geometry.js'
-import type { RowContext } from '../refs/ref.js'
+import type { Ref, RowContext } from '../refs/ref.js'
 import { asBlocks, asRuns, asSheets } from './children.js'
 import type {
   Aggregate,
   Block,
   CellNode,
+  ChartKind,
+  ChartNode,
+  ChartSeries,
   ColumnSpec,
   DataBar,
   KpiBandNode,
@@ -172,6 +175,32 @@ export function Cell(props: {
 export function Note(props: { cols?: number; style?: string; children?: unknown }): NoteNode {
   const node: NoteNode = { kind: 'note', runs: asRuns(props.children), cols: props.cols ?? 4 }
   if (props.style !== undefined) node.style = props.style
+  return node
+}
+
+/**
+ * A native chart. In the .xlsx it is real chart XML bound to real ranges, so it
+ * moves when the numbers do; an embedded picture would go stale the moment
+ * someone changed a cell, which is the one thing this export must never do.
+ */
+export function Chart(props: {
+  kind?: ChartKind
+  title?: string
+  categories: Ref
+  series: ChartSeries[]
+  rows?: number
+  cols?: number
+}): ChartNode {
+  if (!props.series?.length) throw new TypeError('<Chart> requires at least one series')
+  const node: ChartNode = {
+    kind: 'chart',
+    chart: props.kind ?? 'bar',
+    categories: props.categories,
+    series: props.series,
+    rows: props.rows ?? 15,
+    cols: props.cols ?? 6,
+  }
+  if (props.title !== undefined) node.title = props.title
   return node
 }
 

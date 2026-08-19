@@ -1,15 +1,19 @@
-import type { CompiledSheet, CompiledWorkbook } from '../compile/emit.js'
+import type { CompiledSheet, CompiledWorkbook, PlacedChart } from '../compile/emit.js'
 import { type Computed, display, isExcelError, isNotEvaluated } from '../formula/value.js'
 import { columnName } from '../model/a1.js'
 import { parseCellKey } from '../model/cell.js'
+import { type ResolveContext, resolveRef } from '../refs/resolve.js'
 import { formatValue, toCssText } from '../style/css.js'
 import { DEFAULT_THEME, resolveStyle } from '../style/theme.js'
 import { mergeStyle, type Theme } from '../style/types.js'
+import { chartSvg, numberOf, seriesColor } from './svg-chart.js'
 
 export interface HtmlOptions {
   title?: string
   theme?: Theme
   values?: Map<string, Computed>
+  registry?: unknown
+  definedNames?: unknown
   /** Landscape suits wide grids and is the default for print. */
   orientation?: 'portrait' | 'landscape'
   showGridHeaders?: boolean
@@ -23,6 +27,8 @@ interface Covered {
 
 export function toHtml(book: CompiledWorkbook, options: HtmlOptions = {}): string {
   const theme = options.theme ?? DEFAULT_THEME
+  // Charts resolve their ranges, so they need the workbook's registry.
+  options = { registry: book.registry, definedNames: book.definedNames, ...options }
   const sheets = book.sheets.map((sheet) => renderSheet(sheet, theme, options)).join('\n')
   const title = escapeHtml(options.title ?? 'open-sheet')
 
@@ -80,6 +86,11 @@ function stylesheet(theme: Theme, orientation: 'portrait' | 'landscape'): string
   table.os-grid td.os-skip { color: #94a3b8; font-style: italic; }
   table.os-grid td.os-err { color: #b91c1c; }
   .os-head { background: #f8fafc; color: #94a3b8; font-size: 10px; text-align: center; font-weight: 600; }
+  .os-chart-figure { margin: 20px 0 0; }
+  .os-chart { max-width: 100%; height: auto; }
+  .os-chart-title { font-size: 13px; font-weight: 700; fill: var(--os-ink, #0f172a); }
+  .os-chart-grid { stroke: var(--os-hairline); stroke-width: 1; }
+  .os-chart-tick { font-size: 10px; fill: var(--os-muted, #64748b); }
   @media print {
     body { background: #fff; padding: 0; }
     .os-sheet { box-shadow: none; border-radius: 0; padding: 0; break-after: page; }
@@ -157,6 +168,13 @@ function renderSheet(sheet: CompiledSheet, theme: Theme, options: HtmlOptions): 
     rows.push(`<tr>${cells.join('')}</tr>`)
   }
 
+  const charts = sheet.charts
+    .map(
+      (chart) =>
+        `<figure class="os-chart-figure">${renderChart(chart, sheet, theme, options)}</figure>`,
+    )
+    .join('')
+
   return `<section class="os-sheet">
   <h2>${escapeHtml(sheet.name)}</h2>
   <div class="os-scroll"><table class="os-grid"><colgroup>${
@@ -164,6 +182,7 @@ function renderSheet(sheet: CompiledSheet, theme: Theme, options: HtmlOptions): 
   }${widths.join('')}</colgroup><tbody>
 ${rows.join('\n')}
   </tbody></table></div>
+  ${charts}
 </section>`
 }
 
@@ -210,6 +229,53 @@ function renderCell(
 
   if (className) attrs.push(`class="${className}"`)
   return `<td${attrs.length ? ` ${attrs.join(' ')}` : ''}>${escapeHtml(text)}</td>`
+}
+
+/** Reads the same evaluated values the grid shows, so the two cannot disagree. */
+function renderChart(
+  chart: PlacedChart,
+  sheet: CompiledSheet,
+  theme: Theme,
+  options: HtmlOptions,
+): string {
+  void theme
+  const context: ResolveContext = {
+    registry: options.registry as never,
+    definedNames: options.definedNames as never,
+    sheet: sheet.name,
+  }
+  if (!context.registry) return ''
+
+  const readRange = (ref: Parameters<typeof resolveRef>[0]): Computed[] => {
+    const resolved = resolveRef(ref, context)
+    const target = resolved.sheet === sheet.name ? sheet : undefined
+    const out: Computed[] = []
+    for (let r = resolved.rect.r; r < resolved.rect.r + resolved.rect.rows; r += 1) {
+      for (let c = resolved.rect.c; c < resolved.rect.c + resolved.rect.cols; c += 1) {
+        const cell = target?.cells.get(`${r},${c}`)
+        out.push(
+          cell?.expr
+            ? (options.values?.get(`${resolved.sheet}!${r},${c}`) ?? null)
+            : (cell?.value ?? null),
+        )
+      }
+    }
+    return out
+  }
+
+  try {
+    return chartSvg(chart, {
+      categories: readRange(chart.categories).map((value) => display(value ?? null)),
+      series: chart.series.map((entry, index) => ({
+        name: entry.name,
+        values: readRange(entry.values).map(numberOf),
+        color: seriesColor(index),
+      })),
+    })
+  } catch {
+    // A chart that cannot resolve is not worth failing the whole export over.
+    return ''
+  }
 }
 
 function coverage(sheet: CompiledSheet): Map<string, Covered> {

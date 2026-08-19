@@ -3,6 +3,7 @@ import { parseFormula } from '../formula/parse.js'
 import { type Placement, placeSheet } from '../layout/place.js'
 import { type Cell, type CellKey, type CellValue, cellKey } from '../model/cell.js'
 import type { Addr, Rect, Size } from '../model/geometry.js'
+import type { Ref } from '../refs/ref.js'
 import type { KeyValueEntry } from './components.js'
 import type { Aggregate, Block, SheetNode, TableNode, WorkbookNode } from './nodes.js'
 import type { Registry, TableAnchor } from './registry.js'
@@ -15,11 +16,20 @@ export interface ConditionalFormat {
   negativeColor?: string
 }
 
+export interface PlacedChart {
+  chart: 'bar' | 'line' | 'pie'
+  title?: string
+  rect: Rect
+  categories: Ref
+  series: { name: string; values: Ref }[]
+}
+
 export interface CompiledSheet {
   name: string
   cells: Map<CellKey, Cell>
   columnWidths: Map<number, number>
   conditionalFormats: ConditionalFormat[]
+  charts: PlacedChart[]
   freeze?: Addr
   bounds: Size
 }
@@ -59,9 +69,22 @@ function emitSheet(
   const cells = new Map<CellKey, Cell>()
   const columnWidths = new Map<number, number>()
   const conditionalFormats: ConditionalFormat[] = []
+  const charts: PlacedChart[] = []
   const placements = placeSheet(sheet)
 
   for (const placement of placements) {
+    if (placement.block.kind === 'chart') {
+      const node = placement.block
+      const placed: PlacedChart = {
+        chart: node.chart,
+        rect: placement.rect,
+        categories: node.categories,
+        series: node.series,
+      }
+      if (node.title !== undefined) placed.title = node.title
+      charts.push(placed)
+      continue
+    }
     emitPlacement(
       placement,
       sheet.name,
@@ -78,6 +101,7 @@ function emitSheet(
     cells,
     columnWidths,
     conditionalFormats,
+    charts,
     bounds: boundsOf(placements),
   }
   if (sheet.freeze) compiled.freeze = parseFreeze(sheet.freeze)
@@ -115,6 +139,7 @@ function emitPlacement(
       return
     }
     case 'spacer':
+    case 'chart':
       return
     case 'kpiBand': {
       block.items.forEach((item, i) => {

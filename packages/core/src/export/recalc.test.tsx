@@ -2,13 +2,42 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 import { compile } from '../compile/compile.js'
+import { Chart, col, Sheet, Stack, Table, Workbook } from '../compile/components.js'
 import { budget } from '../compile/fixtures.js'
 import { evaluateWorkbook } from '../formula/evaluate.js'
 import { isExcelError, isNotEvaluated } from '../formula/value.js'
 import { parseCellKey } from '../model/cell.js'
+import { ref } from '../refs/ref.js'
 import { XlsxWriter } from './xlsx.js'
+
+function chartFixture() {
+  return (
+    <Workbook>
+      <Sheet name="Sales">
+        <Stack gap={1}>
+          <Table
+            name="sales"
+            data={[
+              { month: 'Jan', units: 120 },
+              { month: 'Feb', units: 150 },
+              { month: 'Mar', units: 190 },
+            ]}
+            columns={[col('month', { header: 'Month' }), col('units', { header: 'Units' })]}
+          />
+          <Chart
+            kind="bar"
+            title="Units by month"
+            categories={ref('sales').column('month')}
+            series={[{ name: 'Units', values: ref('sales').column('units') }]}
+          />
+        </Stack>
+      </Sheet>
+    </Workbook>
+  )
+}
 
 const SOFFICE = ['/opt/homebrew/bin/soffice', '/usr/bin/soffice', '/usr/bin/libreoffice'].find(
   (path) => existsSync(path),
@@ -191,5 +220,47 @@ describe.skipIf(!SOFFICE)('the exported workbook is a live model', () => {
       // net income = operating income × (1 - taxRate), so 0.35 yields 0.65/0.80 of 0.20
       expect(raised[i] as number).toBeCloseTo((base[i] as number) * (0.65 / 0.8), 4)
     }
+  })
+})
+
+/**
+ * Hand-written OOXML is the easiest way to produce a file that opens to an error
+ * dialog, so the chart parts are checked against a real spreadsheet application
+ * rather than against our own reading of the spec.
+ */
+describe.skipIf(!SOFFICE)('native charts survive a real spreadsheet application', () => {
+  it('LibreOffice reads the chart and keeps its ranges live', { timeout: 180_000 }, async () => {
+    const book = compile(chartFixture())
+    const buffer = await new XlsxWriter().write(book, { values: evaluateWorkbook(book) })
+
+    const dir = mkdtempSync(join(tmpdir(), 'open-sheet-chart-'))
+    const xlsx = join(dir, 'chart.xlsx')
+    writeFileSync(xlsx, buffer)
+
+    execFileSync(
+      SOFFICE as string,
+      [
+        `-env:UserInstallation=file://${join(dir, 'profile')}`,
+        '--headless',
+        '--convert-to',
+        'ods',
+        '--outdir',
+        dir,
+        xlsx,
+      ],
+      { stdio: 'pipe', timeout: 150_000 },
+    )
+
+    const ods = unzipSync(new Uint8Array(readFileSync(join(dir, 'chart.ods'))))
+    const objects = Object.keys(ods).filter(
+      (name) => name.endsWith('content.xml') && name !== 'content.xml',
+    )
+    expect(objects.length, 'LibreOffice should have imported a chart object').toBeGreaterThan(0)
+
+    const chart = new TextDecoder().decode(ods[objects[0] as string] as Uint8Array)
+    expect(chart, 'the chart type we asked for').toContain('chart:class="chart:bar"')
+    expect(chart, 'the title we set').toContain('Units by month')
+    // Bound to ranges rather than to values — change a cell and the chart moves.
+    expect(chart).toMatch(/chart:values-cell-range-address="Sales\.B2:Sales\.B4"/)
   })
 })

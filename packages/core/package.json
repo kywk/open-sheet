@@ -33,6 +33,7 @@
     "@babel/parser": "^8.0.4",
     "@formulajs/formulajs": "^4.6.1",
     "exceljs": "^4.4.0",
+    "fflate": "^0.8.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "vite": "^8.2.1"

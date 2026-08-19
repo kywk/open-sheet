@@ -9,6 +9,7 @@ import { toArgb, toExcelStyle } from '../style/excel.js'
 import { DEFAULT_THEME, resolveStyle } from '../style/theme.js'
 import type { Theme } from '../style/types.js'
 import { numberFormat } from './formats.js'
+import { injectCharts } from './ooxml-chart.js'
 import type { WorkbookWriter, WriteOptions } from './writer.js'
 
 export class XlsxWriter implements WorkbookWriter {
@@ -78,7 +79,7 @@ export class XlsxWriter implements WorkbookWriter {
     }
 
     const buffer = await workbook.xlsx.writeBuffer()
-    return Buffer.from(buffer as ArrayBuffer)
+    return injectCharts(Buffer.from(buffer as ArrayBuffer), book)
   }
 }
 

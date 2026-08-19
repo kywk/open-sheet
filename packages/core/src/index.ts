@@ -8,6 +8,7 @@ export { compile } from './compile/compile.js'
 export type { ColumnOptions, KeyValueEntry, TableProps } from './compile/components.js'
 export {
   Cell,
+  Chart,
   col,
   KpiBand,
   Note,
@@ -23,6 +24,9 @@ export { emitWorkbook } from './compile/emit.js'
 export type {
   Aggregate,
   Block,
+  ChartKind,
+  ChartNode,
+  ChartSeries,
   ColumnSpec,
   InlineRun,
   KpiItem,

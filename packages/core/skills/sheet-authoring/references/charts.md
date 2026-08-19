@@ -1,33 +1,57 @@
 # Charts
 
-## What is live, and why it matters
+## The rule
 
 A chart embedded as an image stops being true the moment someone changes a
 number — and the whole point of an open-sheet export is that the recipient *can*
-change a number. So the rule is:
+change a number. So:
 
 **Anything in the .xlsx must recalculate. If it cannot, it does not go in.**
 
-## Today
+`<Chart>` writes real OOXML chart parts bound to real cell ranges. It is not a
+picture. Change a cell in Excel and the chart moves.
 
-| Want | Use | Live in Excel? |
-| --- | --- | --- |
-| Compare magnitudes down a column | `col(…, { bar: true })` | **Yes** — native `dataBar` |
-| A chart in a printed report | HTML/PDF export | n/a — it is a report |
-| A chart inside the workbook | not yet — see below | |
+## Using it
 
-Native Excel charts are tracked as a roadmap item. They require writing OOXML
-chart parts into the exported zip, because the underlying library has no chart
-support and an embedded picture would break the rule above.
+```tsx
+<Chart
+  kind="line"                                   // 'bar' | 'line' | 'pie'
+  title="Trials by month"
+  categories={ref('funnel').column('month')}
+  series={[
+    { name: 'Trials', values: ref('funnel').column('trials') },
+    { name: 'Paid',   values: ref('funnel').column('paid') },
+  ]}
+  rows={16}
+  cols={7}
+/>
+```
 
-Until then: if a reader needs a chart *inside the workbook*, say so plainly in a
-`<Note>` rather than pasting an image that will go stale. Excel's own chart
-tools work fine on a well-structured range, and the range you exported is
-well-structured.
+`categories` and `series[].values` are ordinary references, so they resolve after
+layout like everything else — add a row to the data and the chart's range grows
+with it.
 
-## Structuring for charts the reader will make
+`rows` and `cols` are the chart's footprint on the grid. The placement engine
+treats it as any other block, so it stacks and gaps normally.
+
+## What renders where
+
+| Output | What you get |
+| --- | --- |
+| `.xlsx` | a native chart bound to ranges — live |
+| viewer, `.html`, `.pdf` | an SVG drawn from the same evaluated values |
+| `.csv` | nothing; a chart is not data |
+
+The SVG twin reads the values the grid shows, so the two cannot disagree.
+
+## Also live, and often better
+
+For comparing magnitudes down a single column, `col(key, { bar: true })` is
+usually the clearer choice — a native `dataBar` sits in the cells themselves, so
+there is no chart to position and nothing to fall out of date.
+
+## Structuring data for charts
 
 - Keep a series in one contiguous column with a header
-- Put the category labels in the column immediately left of the first series
-- Avoid blank rows inside the data range — `<Spacer>` goes between blocks, not
-  inside a table
+- Put category labels in their own column
+- No blank rows inside a table — `<Spacer>` goes between blocks, not inside one
