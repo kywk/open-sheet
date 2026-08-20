@@ -46,7 +46,10 @@ export function requireColumn(anchor: TableAnchor, column: string): number {
   throw new Error(
     `no column "${column}" in table "${anchor.name}"` +
       (suggestion ? `; did you mean "${suggestion}"?` : '') +
-      ` (columns: ${known.join(', ')})`,
+      ` (columns: ${known.join(', ')}).\n` +
+      `If "${column}" is in the data but not shown, either add col('${column}') so the ` +
+      `formula can point at a cell, or read the raw value with r.data.${column} — the ` +
+      'raw value is baked into the exported formula as a literal, so the recipient cannot change it.',
   )
 }
 

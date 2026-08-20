@@ -95,7 +95,7 @@ describe('the JSX pipeline', () => {
         },
       ],
     }
-    expect(() => compile(dup)).toThrow(/duplicate block name "x"/)
+    expect(() => compile(dup)).toThrow(/duplicate block name "x" — used twice on sheet "A"/)
   })
 
   it('rejects a module that does not export a Workbook', () => {

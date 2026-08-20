@@ -19,6 +19,26 @@ None of these carry an address. They are descriptions, resolved after layout.
 `r` is the argument to a column's `formula`. `ref(name)` works anywhere,
 including across sheets — the qualifier is added for you.
 
+## `r.cell(key)` vs `r.data.key`
+
+`r.cell('revenue')` points at a **cell**, so the exported formula reads `B5` and
+the recipient can change it. `r.data.revenue` reads the **raw value**, which is
+baked into the formula as a literal:
+
+```tsx
+formula: (r) => div(r.cell('mar'), r.cell('prev'))   // → =D6/E6
+formula: (r) => div(r.cell('mar'), r.data.prev)      // → =D6/128400
+```
+
+Both compute the same number here. Only the first stays a model.
+
+Use `r.data` when the value genuinely is not part of the model — a flag deciding
+*which* formula to build, a label, a lookup key. If it is a number the reader
+might want to change, give it a column so it lands on the grid.
+
+A field that exists in your `data` array but has no `col()` has no cell to point
+at, and `r.cell()` will say so.
+
 Using `r.prev()` on the first row is an error at resolve time naming the guard
 you forgot, not a silent `#REF!`.
 

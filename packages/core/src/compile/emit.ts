@@ -351,8 +351,12 @@ function assertUniqueNames(workbook: WorkbookNode): void {
       if (block.kind !== 'table') return
       const previous = seen.get(block.name)
       if (previous) {
+        const where =
+          previous === sheet.name
+            ? `twice on sheet "${sheet.name}"`
+            : `on sheets "${previous}" and "${sheet.name}"`
         throw new Error(
-          `duplicate block name "${block.name}" (on sheets "${previous}" and "${sheet.name}"). ` +
+          `duplicate block name "${block.name}" — used ${where}. ` +
             'Block names are workbook-global because ref() looks them up by name.',
         )
       }

@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 import { compile } from '../compile/compile.js'
 import { toCsv } from '../export/csv.js'
 import { toHtml } from '../export/html.js'
@@ -45,8 +45,19 @@ export async function build(options: BuildOptions = {}): Promise<BuildResult[]> 
 
   try {
     for (const { id, file } of found) {
-      const module = await loader.load(file)
-      const book = compile(module.default, { design: module.design })
+      // Without the id, a workspace with several workbooks gives you an error
+      // and no idea which file to open.
+      const module = await loader.load(file).catch((error: unknown) => {
+        throw new Error(`${id}: ${error instanceof Error ? error.message : String(error)}`)
+      })
+      let book: ReturnType<typeof compile>
+      try {
+        book = compile(module.default, { design: module.design })
+      } catch (error) {
+        throw new Error(
+          `${id} (${relative(root, file)}): ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
       const values = evaluateWorkbook(book)
 
       let notEvaluated = 0
