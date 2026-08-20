@@ -4,9 +4,25 @@ import { Cell, col, Sheet, Stack, Table, Workbook } from '../compile/components.
 import { budget, QUARTERS } from '../compile/fixtures.js'
 import { cellKey } from '../model/cell.js'
 import { ref } from '../refs/ref.js'
-import { CycleError, evaluateWorkbook } from './evaluate.js'
-import { add, div, gt, if_, iferror, mul, raw, sub, sumproduct } from './expr.js'
-import { toFormula } from './serialize.js'
+import { CycleError, evaluateExpr, evaluateWorkbook } from './evaluate.js'
+import {
+  abs,
+  add,
+  div,
+  gt,
+  if_,
+  iferror,
+  max,
+  min,
+  mul,
+  pow,
+  raw,
+  round,
+  sub,
+  sum,
+  sumproduct,
+} from './expr.js'
+import { serialize, toFormula } from './serialize.js'
 import { display, isNotEvaluated } from './value.js'
 
 function valuesOf(node: unknown) {
@@ -339,5 +355,71 @@ describe('never claim an Excel error we invented', () => {
       ],
     })
     expect(isNotEvaluated(evaluateWorkbook(book).get('S!0,1'))).toBe(true)
+  })
+})
+
+describe('elementwise functions map over a range; aggregates do not', () => {
+  const mk = (formula: unknown) =>
+    compile({
+      kind: 'workbook',
+      children: [
+        {
+          kind: 'sheet',
+          name: 'S',
+          children: [
+            {
+              kind: 'table',
+              name: 't',
+              variant: 'grid',
+              showHeader: true,
+              data: [{ v: -30 }, { v: 11 }, { v: -25 }],
+              columns: [{ key: 'v' }, { key: 'out', formula }],
+            },
+          ],
+        },
+      ],
+    })
+  const at = (formula: unknown) => evaluateWorkbook(mk(formula)).get('S!1,1')
+
+  it('ranks by magnitude — the case this was found on', () => {
+    // Ranking by size of change is the ordinary reason to reach for ABS inside
+    // SUMPRODUCT, and the exported formula was always right; only we could not
+    // compute it.
+    expect(
+      at((r: { cell: (k: string) => never }) =>
+        add(sumproduct(mul(gt(abs(ref('t').column('v')), abs(r.cell('v'))), 1)), 1),
+      ),
+    ).toBe(1)
+  })
+
+  it('maps ROUND across a range', () => {
+    expect(at(() => sumproduct(round(ref('t').column('v'), 0)))).toBe(-44)
+  })
+
+  it('leaves aggregates alone — MIN over a range is a minimum, not three of them', () => {
+    expect(at(() => min(ref('t').column('v')))).toBe(-30)
+    expect(at(() => max(ref('t').column('v')))).toBe(11)
+    expect(at(() => sum(ref('t').column('v')))).toBe(-44)
+  })
+
+  it('still works on a plain scalar', () => {
+    expect(at((r: { cell: (k: string) => never }) => abs(r.cell('v')))).toBe(30)
+  })
+})
+
+describe('exponent associativity matches Excel', () => {
+  // Nearly reported as a serialiser bug. Excel's ^ is left-associative, unlike
+  // most languages, so `B2^2^0.5` is correct for pow(pow(v,2),0.5) and the
+  // parentheses really are unnecessary. The control case is what settles it.
+  const context = { registry: new Map(), definedNames: new Map(), sheet: 'S' } as never
+
+  it('omits parentheses on the left, keeps them on the right', () => {
+    expect(serialize(pow(pow({ k: 'addr', ref: 'B8' }, 2), 0.5), context)).toBe('B8^2^0.5')
+    expect(serialize(pow({ k: 'addr', ref: 'B8' }, pow(2, 0.5)), context)).toBe('B8^(2^0.5)')
+  })
+
+  it('evaluates left-associatively, as Excel does', () => {
+    // =2^3^2 is 64 in Excel, not 512.
+    expect(evaluateExpr(pow(pow(2, 3), 2), context, () => null)).toBe(64)
   })
 })

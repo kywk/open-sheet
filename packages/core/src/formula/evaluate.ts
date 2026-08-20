@@ -344,22 +344,41 @@ function truthy(value: Computed): boolean {
   return false
 }
 
-function applyFn(expr: Expr & { k: 'fn' }, context: ResolveContext, read: Reader): Computed {
+/**
+ * Functions that act on one value at a time. Given a range, Excel maps them over
+ * it — `ABS(A1:A9)` inside SUMPRODUCT is an array of magnitudes, and that is the
+ * ordinary way to rank by size of change.
+ *
+ * The aggregates are deliberately absent: MIN over a range is a minimum, not
+ * nine minimums. Getting that backwards would be worse than not mapping at all.
+ */
+const ELEMENTWISE: ReadonlySet<string> = new Set(['ABS', 'ROUND', 'ROUNDUP', 'ROUNDDOWN', 'NOT'])
+
+function applyFn(expr: Expr & { k: 'fn' }, context: ResolveContext, read: Reader): Value {
   const lazy = applyLazyFn(expr, context, read)
   if (lazy !== undefined) return lazy
 
   const implementation = lookup(expr.name)
   if (!implementation) return NOT_EVALUATED
 
-  const args: unknown[] = []
+  const args: Value[] = []
   for (const arg of expr.args) {
     const value = evaluateValue(arg, context, read)
-    const items = Array.isArray(value) ? value : [value]
+    const items = isArray(value) ? value : [value]
     for (const item of items) {
       if (isNotEvaluated(item)) return NOT_EVALUATED
       if (isExcelError(item)) return item
     }
-    args.push(Array.isArray(value) && value.length === 1 ? value[0] : value)
+    args.push(isArray(value) && value.length === 1 ? (value[0] as Computed) : value)
+  }
+
+  if (ELEMENTWISE.has(expr.name.toUpperCase())) {
+    const spread = args.find(isArray)
+    if (spread) {
+      return spread.map((_, i) =>
+        fromLibrary(implementation(...args.map((arg) => (isArray(arg) ? arg[i] : arg)))),
+      )
+    }
   }
 
   const result = implementation(...args)
