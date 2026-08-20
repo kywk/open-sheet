@@ -41,6 +41,12 @@ Blocks that measure zero — an empty `<Stack>`, a conditional that rendered
 nothing — take no space and consume no gap, so `{condition && <Table …/>}` does
 not leave a hole.
 
+## Merging
+
+A `<Table title>` is merged across the table's full width automatically — you do
+not size it. `<Cell span={{ rows, cols }}>` merges explicitly, and the placement
+engine reserves the whole footprint, so a spanned cell cannot be overlapped.
+
 ## Collisions are framework bugs
 
 The engine asserts that no two blocks overlap and reports both rects if they do.

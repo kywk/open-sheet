@@ -3,6 +3,7 @@ import { compile } from '../compile/compile.js'
 import { budget } from '../compile/fixtures.js'
 import { ref } from '../refs/ref.js'
 import type { ResolveContext } from '../refs/resolve.js'
+import { evaluateWorkbook } from './evaluate.js'
 import { add, div, mul, neg, raw, sub, sum } from './expr.js'
 import { toFormula } from './serialize.js'
 
@@ -99,5 +100,37 @@ describe('resolution errors name what the author can act on', () => {
     expect(() => toFormula(sum(ref('pnl').column('revenue')), contextFor('P&L'))).toThrow(
       /did you mean "pl"/,
     )
+  })
+})
+
+describe('raw as a tagged template', () => {
+  const pl = () => contextFor('P&L')
+
+  it('resolves interpolated references, so the escape hatch needs no addresses', () => {
+    // The framework's one rule is that you never write a cell address. A raw()
+    // that only takes a string forces you to break it — and the address it
+    // forces you to write is exactly what an inserted row invalidates.
+    expect(toFormula(raw`=LARGE(${ref('pl').column('revenue')}, 1)`, pl())).toBe('=LARGE(B5:B8, 1)')
+  })
+
+  it('handles several references and a defined name', () => {
+    expect(
+      toFormula(
+        raw`=INDEX(${ref('pl').column('quarter')},MATCH(${ref('pl').total('revenue')},${ref('pl').column('revenue')},0))*${ref('assumptions').get('growth')}`,
+        pl(),
+      ),
+    ).toBe('=INDEX(A5:A8,MATCH(B9,B5:B8,0))*growth')
+  })
+
+  it('still exports without evaluating', () => {
+    // Honest: we cannot compute LARGE, and we do not pretend to.
+    const book = compile(budget())
+    const values = evaluateWorkbook(book)
+    void values
+    expect(raw`=LARGE(${ref('pl').column('revenue')}, 1)`.k).toBe('rawTemplate')
+  })
+
+  it('keeps the plain string form working', () => {
+    expect(toFormula(raw('=XIRR(A1:A9,B1:B9)'), pl())).toBe('=XIRR(A1:A9,B1:B9)')
   })
 })

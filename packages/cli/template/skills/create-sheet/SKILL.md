@@ -82,6 +82,9 @@ Rules:
   becomes an Excel defined name, so exported formulas read `=B5*growth`.
 - Calculations reference assumptions. A rate written inside a formula is a rate
   the reader cannot change.
+- The reverse is also true: **an assumption that drives nothing is noise.** If
+  you add a key and no formula references it, either wire it up or drop it — a
+  reader who changes it and sees nothing move learns not to trust the sheet.
 - A KPI band belongs at the top of the sheet a reader opens first.
 
 Show the plan before writing if it runs past three sheets.

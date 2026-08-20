@@ -19,6 +19,26 @@ None of these carry an address. They are descriptions, resolved after layout.
 `r` is the argument to a column's `formula`. `ref(name)` works anywhere,
 including across sheets — the qualifier is added for you.
 
+## `r.cell(key)` vs `r.data.key`
+
+`r.cell('revenue')` points at a **cell**, so the exported formula reads `B5` and
+the recipient can change it. `r.data.revenue` reads the **raw value**, which is
+baked into the formula as a literal:
+
+```tsx
+formula: (r) => div(r.cell('mar'), r.cell('prev'))   // → =D6/E6
+formula: (r) => div(r.cell('mar'), r.data.prev)      // → =D6/128400
+```
+
+Both compute the same number here. Only the first stays a model.
+
+Use `r.data` when the value genuinely is not part of the model — a flag deciding
+*which* formula to build, a label, a lookup key. If it is a number the reader
+might want to change, give it a column so it lands on the grid.
+
+A field that exists in your `data` array but has no `col()` has no cell to point
+at, and `r.cell()` will say so.
+
 Using `r.prev()` on the first row is an error at resolve time naming the guard
 you forgot, not a silent `#REF!`.
 
@@ -43,16 +63,60 @@ anywhere an expression can, including a KPI value or a whole column formula:
 col('mirror', { formula: (r) => r.cell('amount') })
 ```
 
-## Aggregating across columns
+## Periods as columns
 
-`sum` and friends are variadic, not only range-takers. When months are columns
-rather than rows — a matrix — this is how a row total is written:
+The reference examples above put periods in rows. Cost and budget analysis
+usually does the opposite — one row per account, one column per month — and that
+layout needs two things the row-wise examples never show.
+
+**`sum` is variadic**, so a row total is a spread, not a range:
 
 ```tsx
-const MONTHS = [{ key: 'jan' }, { key: 'feb' }, { key: 'mar' }]
+const MONTHS = [
+  { key: 'jan', header: 'Jan' },
+  { key: 'feb', header: 'Feb' },
+  { key: 'mar', header: 'Mar' },
+]
 
-col('total', { formula: (r) => sum(...MONTHS.map((m) => r.cell(m.key))) })
+const services = [
+  { service: 'Compute', jan: 128_400, feb: 141_200, mar: 155_900 },
+  { service: 'Storage', jan: 22_100, feb: 21_800, mar: 24_600 },
+]
+
+<Table
+  name="costs"
+  data={services}
+  columns={[
+    col('service', { header: 'Service', width: 20 }),
+    ...MONTHS.map((m) => col(m.key, { header: m.header, format: 'currency' })),
+    col('total', {
+      header: 'Q1',
+      format: 'currency',
+      formula: (r) => sum(...MONTHS.map((m) => r.cell(m.key))),
+    }),
+    col('mom', {
+      header: 'MoM',
+      format: 'percent',
+      // Month-on-month reads sideways: this column against the one before it.
+      formula: (r) => sub(div(r.cell('mar'), r.cell('feb')), 1),
+    }),
+  ]}
+  total={Object.fromEntries(MONTHS.map((m) => [m.key, 'sum' as const]))}
+/>
 ```
+
+**Two tables fed the same array line up row for row**, so a second sheet can
+reference across without any alignment work:
+
+```tsx
+// On another sheet, same `services` array, same order:
+col('share', {
+  formula: (r) => div(ref('costs').cell('total', r.index), ref('costs').total('total')),
+})
+```
+
+`r.index` is the row's position in the data, which is what makes this safe —
+insert a service and both tables move together.
 
 ## Guarding a division
 

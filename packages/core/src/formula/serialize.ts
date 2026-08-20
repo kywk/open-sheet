@@ -30,6 +30,7 @@ function precedenceOf(expr: Expr): number {
   // unless it is plainly a single atom, where parentheses only add noise.
   if (expr.k === 'raw') return RAW_ATOM.test(expr.src) ? ATOM : 0
   if (expr.k === 'addr') return ATOM
+  if (expr.k === 'rawTemplate') return 0
   return ATOM
 }
 
@@ -53,6 +54,15 @@ export function serialize(input: ExprInput, context: ResolveContext): string {
       return expr.src
     case 'addr':
       return expr.ref
+    case 'rawTemplate': {
+      let out = ''
+      expr.strings.forEach((part, i) => {
+        out += part
+        const target = expr.refs[i]
+        if (target) out += refToA1(target, context)
+      })
+      return out
+    }
     case 'neg': {
       const inner = serialize(expr.e, context)
       return precedenceOf(expr.e) < NEG_PRECEDENCE ? `-(${inner})` : `-${inner}`

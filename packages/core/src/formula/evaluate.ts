@@ -18,6 +18,18 @@ import {
 
 export type ValueMap = Map<string, Computed>
 
+/**
+ * A range operand evaluates to an array, and Excel's array semantics let one
+ * flow through comparisons and arithmetic — `(B2:B4>B2)*1` is an array of ones
+ * and zeros. Without this, SUMPRODUCT is on the whitelist but the only reason
+ * anyone reaches for it does not work: summing a single plain range is just SUM.
+ */
+type Value = Computed | Computed[]
+
+function isArray(value: Value): value is Computed[] {
+  return Array.isArray(value)
+}
+
 function key(sheet: string, r: number, c: number): string {
   return `${sheet}!${cellKey(r, c)}`
 }
@@ -126,32 +138,45 @@ export function evaluateWorkbook(book: CompiledWorkbook): ValueMap {
 type Reader = (sheet: string, r: number, c: number) => Computed
 
 export function evaluateExpr(expr: Expr, context: ResolveContext, read: Reader): Computed {
+  return collapse(evaluateValue(expr, context, read))
+}
+
+/** A cell holds one value. An array that is not a single element cannot be shown. */
+function collapse(value: Value): Computed {
+  if (!isArray(value)) return value
+  if (value.length === 1) return value[0] as Computed
+  for (const item of value) if (isNotEvaluated(item)) return NOT_EVALUATED
+  // Excel would spill this; we have no representation for that, and claiming
+  // #VALUE! would assert Excel errors here when it does not.
+  return NOT_EVALUATED
+}
+
+function evaluateValue(expr: Expr, context: ResolveContext, read: Reader): Value {
   switch (expr.k) {
     case 'lit':
       return expr.v
     case 'raw':
+    case 'rawTemplate':
       return NOT_EVALUATED
     case 'addr': {
       const values = readAddr(expr.ref, context, read)
-      if (values.length === 1) return values[0] as Computed
-      return VALUE
+      return values.length === 1 ? (values[0] as Computed) : values
     }
     case 'ref': {
       const values = readRef(expr, context, read)
-      if (values.length === 1) return values[0] as Computed
-      return VALUE
+      return values.length === 1 ? (values[0] as Computed) : values
     }
-    case 'neg': {
-      const inner = evaluateExpr(expr.e, context, read)
-      if (isNotEvaluated(inner) || isExcelError(inner)) return inner
-      const n = toNumber(inner)
-      return typeof n === 'number' ? -n : n
-    }
+    case 'neg':
+      return mapValue(evaluateValue(expr.e, context, read), (inner) => {
+        if (isNotEvaluated(inner) || isExcelError(inner)) return inner
+        const n = toNumber(inner)
+        return typeof n === 'number' ? -n : n
+      })
     case 'op':
-      return applyOp(
+      return broadcast(
         expr.op,
-        evaluateExpr(expr.l, context, read),
-        evaluateExpr(expr.r, context, read),
+        evaluateValue(expr.l, context, read),
+        evaluateValue(expr.r, context, read),
       )
     case 'fn':
       return applyFn(expr, context, read)
@@ -200,6 +225,23 @@ function toText(value: Computed): string | Computed {
   if (typeof value === 'number') return String(value)
   if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
   return value
+}
+
+function mapValue(value: Value, fn: (item: Computed) => Computed): Value {
+  return isArray(value) ? value.map(fn) : fn(value)
+}
+
+/** Elementwise where either side is an array, as Excel does. */
+function broadcast(op: BinaryOp, left: Value, right: Value): Value {
+  if (!isArray(left) && !isArray(right)) return applyOp(op, left, right)
+
+  const length = Math.max(isArray(left) ? left.length : 1, isArray(right) ? right.length : 1)
+  const at = (value: Value, i: number): Computed =>
+    isArray(value) ? ((value[i] ?? null) as Computed) : value
+
+  const out: Computed[] = []
+  for (let i = 0; i < length; i += 1) out.push(applyOp(op, at(left, i), at(right, i)))
+  return out
 }
 
 function applyOp(op: BinaryOp, left: Computed, right: Computed): Computed {
@@ -311,33 +353,36 @@ function applyFn(expr: Expr & { k: 'fn' }, context: ResolveContext, read: Reader
 
   const args: unknown[] = []
   for (const arg of expr.args) {
-    if (arg.k === 'ref' || arg.k === 'addr') {
-      const values =
-        arg.k === 'ref' ? readRef(arg, context, read) : readAddr(arg.ref, context, read)
-      for (const value of values) {
-        if (isNotEvaluated(value)) return NOT_EVALUATED
-        if (isExcelError(value)) return value
-      }
-      args.push(values.length === 1 ? values[0] : values)
-      continue
+    const value = evaluateValue(arg, context, read)
+    const items = Array.isArray(value) ? value : [value]
+    for (const item of items) {
+      if (isNotEvaluated(item)) return NOT_EVALUATED
+      if (isExcelError(item)) return item
     }
-    const value = evaluateExpr(arg, context, read)
-    if (isNotEvaluated(value)) return NOT_EVALUATED
-    if (isExcelError(value)) return value
-    args.push(value)
+    args.push(Array.isArray(value) && value.length === 1 ? value[0] : value)
   }
 
   const result = implementation(...args)
   return fromLibrary(result)
 }
 
+/**
+ * `#VALUE!` from the function library usually means *we* handed it something it
+ * did not understand, not that Excel would error. Reporting it as an Excel error
+ * puts a fabricated error into the exported cache and lets `iferror` swallow a
+ * gap in this evaluator as though it were a real spreadsheet condition.
+ * #NOT_EVALUATED says the true thing: we did not compute this. It is not
+ * catchable, and it counts in the "not evaluated" badge.
+ */
 function fromLibrary(result: unknown): Computed {
   if (result === null || result === undefined) return null
   if (typeof result === 'number') return Number.isFinite(result) ? result : NUM
   if (typeof result === 'string') {
-    return result.startsWith('#') ? errorFrom(result) : result
+    if (!result.startsWith('#')) return result
+    return result === '#VALUE!' ? NOT_EVALUATED : errorFrom(result)
   }
   if (typeof result === 'boolean') return result
-  if (result instanceof Error) return errorFrom(`#${result.name}`)
-  return VALUE
+  if (result instanceof Error) return NOT_EVALUATED
+  if (Array.isArray(result)) return NOT_EVALUATED
+  return NOT_EVALUATED
 }

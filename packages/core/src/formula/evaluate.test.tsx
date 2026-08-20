@@ -5,7 +5,8 @@ import { budget, QUARTERS } from '../compile/fixtures.js'
 import { cellKey } from '../model/cell.js'
 import { ref } from '../refs/ref.js'
 import { CycleError, evaluateWorkbook } from './evaluate.js'
-import { div, gt, if_, iferror, raw, sub } from './expr.js'
+import { add, div, gt, if_, iferror, mul, raw, sub, sumproduct } from './expr.js'
+import { toFormula } from './serialize.js'
 import { display, isNotEvaluated } from './value.js'
 
 function valuesOf(node: unknown) {
@@ -245,5 +246,98 @@ describe('functions that exist to catch errors must actually see them', () => {
       book((r: { cell: (k: string) => never }) => div(r.cell('cur'), r.cell('prev'))),
     )
     expect(display(values.get('S!0,2') as never)).toBe('#DIV/0!')
+  })
+})
+
+describe('array semantics — what SUMPRODUCT is actually for', () => {
+  const ranked = () =>
+    compile({
+      kind: 'workbook',
+      children: [
+        {
+          kind: 'sheet',
+          name: 'S',
+          children: [
+            {
+              kind: 'table',
+              name: 't',
+              variant: 'grid',
+              showHeader: true,
+              data: [{ v: 11 }, { v: 30 }, { v: 25 }],
+              columns: [
+                { key: 'v' },
+                {
+                  key: 'rank',
+                  // The standard spreadsheet ranking idiom: count how many are
+                  // larger. Summing one plain range would just be SUM — array
+                  // comparison is the entire reason to reach for SUMPRODUCT.
+                  formula: (r: never) =>
+                    add(
+                      sumproduct(
+                        mul(
+                          gt(
+                            ref('t').column('v'),
+                            (r as never as { cell: (k: string) => never }).cell('v'),
+                          ),
+                          1,
+                        ),
+                      ),
+                      1,
+                    ),
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+
+  it('ranks by counting how many are larger', () => {
+    const values = evaluateWorkbook(ranked())
+    expect(values.get('S!1,1')).toBe(3)
+    expect(values.get('S!2,1')).toBe(1)
+    expect(values.get('S!3,1')).toBe(2)
+  })
+
+  it('exports the formula Excel expects', () => {
+    const book = ranked()
+    expect(
+      toFormula(book.sheets[0]?.cells.get('1,1')?.expr as never, {
+        registry: book.registry,
+        definedNames: book.definedNames,
+        sheet: 'S',
+      }),
+    ).toBe('=SUMPRODUCT((A2:A4>A2)*1)+1')
+  })
+})
+
+describe('never claim an Excel error we invented', () => {
+  it('reports what we could not evaluate as not-evaluated, so iferror cannot swallow it', () => {
+    // Fixing IFERROR made it able to mask evaluator gaps too, if those gaps
+    // reported themselves as #VALUE!. They report #NOT_EVALUATED instead, which
+    // is not catchable and counts in the badge.
+    const book = compile({
+      kind: 'workbook',
+      children: [
+        {
+          kind: 'sheet',
+          name: 'S',
+          children: [
+            {
+              kind: 'table',
+              name: 't',
+              variant: 'grid',
+              showHeader: false,
+              data: [{ a: 1 }],
+              columns: [
+                { key: 'a' },
+                { key: 'out', formula: () => iferror(raw('=XIRR(A1:A9,B1:B9)'), 'hidden') },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+    expect(isNotEvaluated(evaluateWorkbook(book).get('S!0,1'))).toBe(true)
   })
 })

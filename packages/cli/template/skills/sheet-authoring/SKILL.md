@@ -1,140 +1,190 @@
----
-name: sheet-authoring
-description: Technical reference for writing open-sheet workbooks — the file contract, the component surface, references and formulas, number formats, and the rules that keep a workbook a live model. Use this whenever writing or editing a file under `sheets/<id>/index.tsx`. The workflow for drafting a new workbook from scratch lives in the `create-sheet` skill.
----
+# References and formulas
 
-# Authoring an open-sheet workbook
+## References
 
-## The one rule
+None of these carry an address. They are descriptions, resolved after layout.
 
-**Never write a cell address.**
+| Reference | Points at |
+| --- | --- |
+| `r.cell('revenue')` | the named column, same row |
+| `r.prev().cell('revenue')` | the row above — **guard with `r.isFirst`** |
+| `r.next().cell('revenue')` | the row below — **guard with `r.isLast`** |
+| `r.index`, `r.isFirst`, `r.isLast`, `r.data` | position and the row's own object |
+| `ref('pl').column('revenue')` | that column's whole data range |
+| `ref('pl').total('revenue')` | that column's total cell (needs `total={{ … }}`) |
+| `ref('pl').cell('revenue', 0)` | a specific data row |
+| `ref('pl').body()` | the whole data area |
+| `ref('assumptions').get('growth')` | a key-value entry, by its defined name |
 
-Not `B5`. Not `SUM(B2:B13)`. Not `$A$1`. The framework assigns every coordinate
-*after* it has laid the blocks out, and references resolve against that layout.
-Writing an address by hand means writing a number that is correct only until
-someone adds a row — and then it is silently wrong, which in a financial model is
-worse than broken.
+`r` is the argument to a column's `formula`. `ref(name)` works anywhere,
+including across sheets — the qualifier is added for you.
 
-If you catch yourself counting rows to work out where something landed, stop.
-The thing you want is a reference.
+## `r.cell(key)` vs `r.data.key`
 
-The single exception is `raw('...')`, the deliberate escape hatch — see
-[references/formulas.md](references/formulas.md).
-
-## The file contract
+`r.cell('revenue')` points at a **cell**, so the exported formula reads `B5` and
+the recipient can change it. `r.data.revenue` reads the **raw value**, which is
+baked into the formula as a literal:
 
 ```tsx
-// sheets/<id>/index.tsx
-import { Sheet, Table, Workbook, col, sub, type SheetMeta } from '@open-sheet/core'
-
-export const meta: SheetMeta = {
-  title: 'FY26 Budget',        // shown in the viewer and used as the export name
-  description: 'One line.',    // optional
-  theme: 'corporate-neutral',  // optional; links back to themes/<id>.md
-  createdAt: '2026-08-18T00:00:00.000Z',
-}
-
-export const design: DesignSystem = { … }   // optional; see the Design panel note
-
-export default (
-  <Workbook>
-    <Sheet name="…">…</Sheet>
-  </Workbook>
-)
+formula: (r) => div(r.cell('mar'), r.cell('prev'))   // → =D6/E6
+formula: (r) => div(r.cell('mar'), r.data.prev)      // → =D6/128400
 ```
 
-The default export must be a `<Workbook>` containing `<Sheet>` children. `meta`
-and `design` are plain object literals — the dev UI parses and rewrites them, and
-a spread or an imported value makes the workbook untweakable.
+Both compute the same number here. Only the first stays a model.
 
-## Structure in JSX, data in TypeScript
+Use `r.data` when the value genuinely is not part of the model — a flag deciding
+*which* formula to build, a label, a lookup key. If it is a number the reader
+might want to change, give it a column so it lands on the grid.
 
-JSX describes the *report*. Rows are plain arrays.
+A field that exists in your `data` array but has no `col()` has no cell to point
+at, and `r.cell()` will say so.
+
+Using `r.prev()` on the first row is an error at resolve time naming the guard
+you forgot, not a silent `#REF!`.
+
+## Building expressions
 
 ```tsx
-const quarters = [
-  { quarter: 'Q1', revenue: 12_400_000, cogs: 5_100_000 },
-  { quarter: 'Q2', revenue: 13_900_000, cogs: 5_600_000 },
+sub(r.cell('revenue'), r.cell('cogs'))
+div(sum(ref('pl').column('grossProfit')), sum(ref('pl').column('revenue')))
+mul(r.cell('operatingIncome'), sub(1, ref('assumptions').get('taxRate')))
+if_(gt(r.cell('revenue'), 0), div(r.cell('cogs'), r.cell('revenue')), 0)
+```
+
+Arithmetic: `add` `sub` `mul` `div` `pow` `neg` · text: `concat` · comparison:
+`eq` `neq` `lt` `gt` `lte` `gte` · functions: `sum` `avg` `count` `min` `max`
+`round` `abs` `if_` `iferror` `ifna` `npv` `irr` `sumproduct`.
+
+Bare numbers, strings, and references all lift automatically — a reference can go
+anywhere an expression can, including a KPI value or a whole column formula:
+
+```tsx
+{ label: 'Total cost', value: ref('costs').total('total') }
+col('mirror', { formula: (r) => r.cell('amount') })
+```
+
+## Periods as columns
+
+The reference examples above put periods in rows. Cost and budget analysis
+usually does the opposite — one row per account, one column per month — and that
+layout needs two things the row-wise examples never show.
+
+**`sum` is variadic**, so a row total is a spread, not a range:
+
+```tsx
+const MONTHS = [
+  { key: 'jan', header: 'Jan' },
+  { key: 'feb', header: 'Feb' },
+  { key: 'mar', header: 'Mar' },
+]
+
+const services = [
+  { service: 'Compute', jan: 128_400, feb: 141_200, mar: 155_900 },
+  { service: 'Storage', jan: 22_100, feb: 21_800, mar: 24_600 },
 ]
 
 <Table
-  name="pl"
-  data={quarters}
+  name="costs"
+  data={services}
   columns={[
-    col('quarter', { header: 'Quarter', width: 12 }),
-    col('revenue', { header: 'Revenue', format: 'currency' }),
-    col('grossProfit', {
-      header: 'Gross profit',
+    col('service', { header: 'Service', width: 20 }),
+    ...MONTHS.map((m) => col(m.key, { header: m.header, format: 'currency' })),
+    col('total', {
+      header: 'Q1',
       format: 'currency',
-      formula: (r) => sub(r.cell('revenue'), r.cell('cogs')),
+      formula: (r) => sum(...MONTHS.map((m) => r.cell(m.key))),
+    }),
+    col('mom', {
+      header: 'MoM',
+      format: 'percent',
+      // Month-on-month reads sideways: this column against the one before it.
+      formula: (r) => sub(div(r.cell('mar'), r.cell('feb')), 1),
     }),
   ]}
-  total={{ revenue: 'sum', grossProfit: 'sum' }}
+  total={Object.fromEntries(MONTHS.map((m) => [m.key, 'sum' as const]))}
 />
 ```
 
-Do not write a thousand rows of JSX. If the data is generated, generate the
-array and hand it to `data`.
-
-## The component surface
-
-| Component | What it is |
-| --- | --- |
-| `<Workbook>` | The root. Children must be `<Sheet>`. |
-| `<Sheet name freeze origin>` | One tab. `freeze="B2"` freezes the rows above and columns left of that cell. |
-| `<Stack gap>` | Stacks blocks downward. `gap` is in rows (default 1). |
-| `<Row gap>` | Places blocks side by side. `gap` is in columns. |
-| `<Table>` | A named data block. See below. |
-| `<KpiBand items>` | A label row above a value row — a headline strip. |
-| `<Cell value formula format style span>` | One cell. |
-| `<Note cols>` | A line of prose spanning `cols` columns. |
-| `<Spacer rows cols>` | Deliberate empty space. |
-
-`<Table>` has two shapes:
-
-- **grid** (default) — `name`, `data`, `columns`, optional `title`, `showHeader`,
-  `total`
-- **key-value** — `kind="keyValue"` with `data={[{ key, label, value, format }]}`.
-  Every `key` becomes an **Excel defined name**, so formulas referencing it read
-  `=B5*growth` in the exported file. This is how assumptions should be written.
-
-`name` is workbook-global, because `ref()` looks blocks up by name. A duplicate
-throws at compile time.
-
-`total` applies to **grid** tables only — a key-value block is a list of named
-scalars, not a column to aggregate. To total a key-value block, reference the
-entries you want and add them.
-
-## Separate assumptions from calculations
-
-Put every number a reader might want to change on its own sheet, in a
-`kind="keyValue"` table, and reference it. That is what makes the export a model
-rather than a picture of one.
+**Two tables fed the same array line up row for row**, so a second sheet can
+reference across without any alignment work:
 
 ```tsx
-<Sheet name="Assumptions">
-  <Table name="assumptions" kind="keyValue" data={[
-    { key: 'growth',  label: 'QoQ growth', value: 0.08, format: 'percent' },
-    { key: 'taxRate', label: 'Tax rate',   value: 0.2,  format: 'percent' },
-  ]} />
-</Sheet>
+// On another sheet, same `services` array, same order:
+col('share', {
+  formula: (r) => div(ref('costs').cell('total', r.index), ref('costs').total('total')),
+})
 ```
 
-A number hard-coded inside a formula is a number the recipient cannot change.
+`r.index` is the row's position in the data, which is what makes this safe —
+insert a service and both tables move together.
 
-## Further reference
+## Guarding a division
 
-- [references/placement.md](references/placement.md) — how blocks are sized and placed
-- [references/formulas.md](references/formulas.md) — references, the builder API, the function whitelist
-- [references/formats.md](references/formats.md) — number formats, styles, data bars, themes
-- [references/charts.md](references/charts.md) — what is live and what is not
+Two ways, and both are honest. Use whichever reads better:
 
-## Self-review before finishing
+```tsx
+// return null: the cell is simply empty
+formula: (r) => (r.isFirst ? null : sub(div(r.cell('cur'), r.prev().cell('cur')), 1))
 
-- [ ] No A1 address anywhere in the file
-- [ ] Every number a reader might change lives in an assumptions block, not inside a formula
-- [ ] Every `col` that computes uses `formula`, not a pre-computed value in `data`
-- [ ] `r.prev()` / `r.next()` are guarded with `r.isFirst` / `r.isLast`
-- [ ] Formats are set on the columns that need them — a bare `0.0829` reads as noise
-- [ ] Nothing was invented: every figure came from the user or a named source
-- [ ] The viewer shows no unexpected `#NOT_EVALUATED`
+// iferror: keep the formula, name what happens when it cannot compute
+formula: (r) => iferror(sub(div(r.cell('cur'), r.cell('prev')), 1), '')
+```
+
+**Do not "fix" a `#DIV/0!` by padding the denominator.** `max(prev, 1)` turns an
+honest blank into a number that looks real and is not. `iferror` exists so you
+never have to.
+
+Return `null` from a `formula` to leave the cell empty — that is how a
+first-row growth figure should be written:
+
+```tsx
+formula: (r) => (r.isFirst ? null : sub(div(r.cell('revenue'), r.prev().cell('revenue')), 1))
+```
+
+## The whitelist, and `raw()`
+
+The builders above are the functions open-sheet can both write *and* evaluate.
+Anything else goes through the escape hatch:
+
+```tsx
+formula: () => raw`=LARGE(${ref('costs').column('delta')}, 1)`
+```
+
+Use the **tagged template** form. A plain `raw('...')` string can only contain
+hand-written addresses, and this framework's one rule is that you never write
+one — the escape hatch should not be the thing that forces you to break it.
+Interpolated references resolve after layout like any other, so the formula
+survives an inserted row:
+
+```tsx
+raw`=INDEX(${ref('costs').column('service')},MATCH(${ref('costs').total('delta')},${ref('costs').column('delta')},0))`
+```
+
+The plain string form still works, for a formula with nothing to reference:
+
+```tsx
+formula: () => raw('=RAND()')
+```
+
+`raw()` exports verbatim and works in Excel. It is **not evaluated here**, so the
+viewer shows `#NOT_EVALUATED` and the CSV cell is empty. That is deliberate: a
+plausible-looking wrong number in a financial model is the worst failure this
+project can have, so it never guesses.
+
+`iferror` cannot hide this. Anything the evaluator could not compute reports
+itself as not-evaluated rather than as an Excel error, so wrapping it does not
+turn a gap in the viewer into a blank that looks like data.
+
+Prefer a whitelisted expression. Reach for `raw()` when the function genuinely
+has no equivalent, and say so in a `<Note>` if the reader will wonder.
+
+## Formula strings
+
+A string like `"=A1+B2"` is parsed where possible so it still evaluates, but it
+is not the recommended path — it is exactly the thing that breaks when a row is
+inserted. Use references.
+
+## Cycles
+
+A circular reference is reported with every participating cell. Break it in the
+source; there is no iterative-calculation mode.

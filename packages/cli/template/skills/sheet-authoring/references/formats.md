@@ -24,6 +24,18 @@ Any other string is passed through as a literal Excel format code.
 **A ratio without a format reads as noise.** `0.6029159519725558` in a report is
 a defect. Put `format: 'percent'` on it.
 
+## What each output does with a format
+
+| Output | Formats applied? |
+| --- | --- |
+| viewer, `.html`, `.pdf` | yes — rendered as Excel would |
+| `.xlsx` | yes — the code is written and Excel applies it |
+| `.csv` | **no** — raw values at full precision |
+
+CSV is data, not presentation. A `percent` column exports as
+`0.5352386237513873`, not `53.5%`, because something downstream is going to do
+arithmetic on it and a rounded string would be the wrong thing to hand over.
+
 ## Styles
 
 Cells carry a style key resolved against the active theme. The compiler assigns

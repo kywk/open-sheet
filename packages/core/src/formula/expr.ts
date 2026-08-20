@@ -43,11 +43,19 @@ export interface AddrExpr {
   ref: string
 }
 
-export type Expr = LitExpr | RefExpr | OpExpr | NegExpr | FnExpr | RawExpr | AddrExpr
+export type Expr =
+  | LitExpr
+  | RefExpr
+  | OpExpr
+  | NegExpr
+  | FnExpr
+  | RawExpr
+  | AddrExpr
+  | RawTemplateExpr
 
 export type ExprInput = Expr | Ref | Scalar
 
-const EXPR_KINDS = new Set(['lit', 'ref', 'op', 'neg', 'fn', 'raw', 'addr'])
+const EXPR_KINDS = new Set(['lit', 'ref', 'op', 'neg', 'fn', 'raw', 'addr', 'rawTemplate'])
 
 export function isExpr(value: unknown): value is Expr {
   if (typeof value !== 'object' || value === null) return false
@@ -139,8 +147,39 @@ export const irr = (values: ExprInput, guess?: ExprInput): FnExpr =>
   fn('IRR', guess === undefined ? [values] : [values, guess])
 export const sumproduct = (...args: ExprInput[]): FnExpr => fn('SUMPRODUCT', args)
 
+export interface RawTemplateExpr {
+  k: 'rawTemplate'
+  strings: readonly string[]
+  refs: Ref[]
+}
+
 /**
  * Escape hatch for formulas outside the whitelist. Exports verbatim; the viewer
  * shows #NOT_EVALUATED for it rather than guessing a value.
+ *
+ * Also usable as a tagged template, which is the form to prefer. A plain string
+ * can only contain hand-written addresses — and this framework's one rule is
+ * that you never write one, so the escape hatch should not be the thing that
+ * forces you to. Interpolated references resolve after layout like any other,
+ * so the formula survives an inserted row:
+ *
+ * ```ts
+ * raw`=LARGE(${ref('costs').column('delta')}, 1)`
+ * ```
  */
-export const raw = (src: string): RawExpr => ({ k: 'raw', src: src.replace(/^=/, '') })
+export function raw(src: string): RawExpr
+export function raw(strings: TemplateStringsArray, ...refs: (Ref | Expr)[]): RawTemplateExpr
+export function raw(
+  src: string | TemplateStringsArray,
+  ...refs: (Ref | Expr)[]
+): RawExpr | RawTemplateExpr {
+  if (typeof src === 'string') return { k: 'raw', src: src.replace(/^=/, '') }
+
+  const parts = [...src]
+  if (parts.length > 0) parts[0] = (parts[0] as string).replace(/^\s*=/, '')
+  return {
+    k: 'rawTemplate',
+    strings: parts,
+    refs: refs.map((value) => (isRef(value) ? value : ({ kind: 'expr', expr: value } as never))),
+  }
+}
