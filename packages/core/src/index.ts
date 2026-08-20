@@ -44,6 +44,8 @@ export type {
   TableNode,
   WorkbookNode,
 } from './compile/nodes.js'
+export type { CellOrigin } from './compile/origin.js'
+export { originOf } from './compile/origin.js'
 export type { Anchor, KeyValueAnchor, Registry, TableAnchor } from './compile/registry.js'
 export type { CsvOptions } from './export/csv.js'
 // Pure exporters

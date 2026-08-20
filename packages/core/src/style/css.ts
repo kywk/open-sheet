@@ -51,22 +51,84 @@ export function toCssText(style: CellStyle): string {
  * Excel number formats drive both renderers. The HTML side cannot ask Excel to
  * format for it, so the common codes are interpreted here; anything else falls
  * back to the raw value rather than guessing at a format we do not understand.
+ *
+ * Sections matter more than they look. Excel reads `positive;negative;zero;text`
+ * and the accounting format uses all of them — negatives in parentheses, zero as
+ * a dash. Ignoring them made the viewer show `-84,500` where Excel showed
+ * `(84,500)`: the same cell reading differently in the two places, which is the
+ * one thing a "what you see is what exports" tool cannot afford.
  */
 export function formatValue(value: unknown, format: string | undefined): string {
   if (value === null || value === undefined || value === '') return ''
   if (typeof value !== 'number') return String(value)
 
-  const code = numberFormat(format)
-  if (!code || code === 'General') return trimNumber(value)
+  const full = numberFormat(format)
+  if (!full || full === 'General') return trimNumber(value)
 
+  const { code, negated, literal } = section(full, value)
+  if (literal !== undefined) return literal
+  const magnitude = negated ? Math.abs(value) : value
+  const rendered = renderSection(magnitude, code)
+  return negated ? `(${rendered})` : rendered
+}
+
+interface Section {
+  code: string
+  /** The negative section is written for a positive number in parentheses. */
+  negated: boolean
+  /** A section that is nothing but literal text, e.g. the accounting zero dash. */
+  literal?: string
+}
+
+function section(full: string, value: number): Section {
+  const parts = splitSections(full)
+  if (parts.length === 1) return { code: clean(parts[0] as string), negated: false }
+
+  const chosen =
+    value < 0 ? (parts[1] ?? parts[0]) : value === 0 ? (parts[2] ?? parts[0]) : parts[0]
+  const code = clean(chosen as string)
+
+  // A negative section written as `(#,##0)` already carries the sign visually.
+  const parenthesised = /^\(.*\)$/.test(code)
+  const bare = parenthesised ? code.slice(1, -1) : code
+
+  if (!/[0#]/.test(bare)) {
+    const text = bare.replace(/"/g, '').trim()
+    return { code: bare, negated: false, literal: text }
+  }
+  return { code: bare, negated: value < 0 && parenthesised }
+}
+
+/** `;` inside quotes is literal text, not a section break. */
+function splitSections(code: string): string[] {
+  const out: string[] = []
+  let current = ''
+  let quoted = false
+  for (const ch of code) {
+    if (ch === '"') quoted = !quoted
+    if (ch === ';' && !quoted) {
+      out.push(current)
+      current = ''
+      continue
+    }
+    current += ch
+  }
+  out.push(current)
+  return out
+}
+
+/** Strips Excel's alignment padding (`_(`, `* `) which has no HTML equivalent. */
+function clean(code: string): string {
+  return code.replace(/_./g, '').replace(/\*./g, '').trim()
+}
+
+function renderSection(value: number, code: string): string {
   if (code.includes('%')) {
     const decimals = decimalsIn(code)
     return `${(value * 100).toFixed(decimals)}%`
   }
   if (code.includes(',,')) return `${group((value / 1_000_000).toFixed(decimalsIn(code)))}M`
-  if (code.includes(',"K"') || code.includes(',”K”')) {
-    return `${group((value / 1_000).toFixed(decimalsIn(code)))}K`
-  }
+  if (code.includes(',"K"')) return `${group((value / 1_000).toFixed(decimalsIn(code)))}K`
   if (code.includes('#,##0')) return group(value.toFixed(decimalsIn(code)))
   if (code === '@') return String(value)
 

@@ -183,7 +183,9 @@ describe('cycles', () => {
       ],
     }
     expect(() => valuesOf(book)).toThrow(CycleError)
-    expect(() => valuesOf(book)).toThrow(/circular reference/)
+    // Named by construct, not by coordinate — the author never wrote one.
+    expect(() => valuesOf(book)).toThrow(/"loop" column "a" row 1/)
+    expect(() => valuesOf(book)).toThrow(/"loop" column "a" row 2/)
   })
 })
 

@@ -1,6 +1,7 @@
 import type { CompiledWorkbook } from '../compile/emit.js'
-import { fromA1 } from '../model/a1.js'
-import { type Cell, cellKey } from '../model/cell.js'
+import { originOf } from '../compile/origin.js'
+import { fromA1, toA1 } from '../model/a1.js'
+import { type Cell, cellKey, parseCellKey } from '../model/cell.js'
 import { type ResolveContext, resolveRef } from '../refs/resolve.js'
 import type { BinaryOp, Expr } from './expr.js'
 import { lookup } from './functions.js'
@@ -30,14 +31,31 @@ interface Node {
 
 export class CycleError extends Error {
   readonly cells: string[]
-  constructor(cells: string[]) {
+  constructor(cells: string[], described?: string[]) {
+    // Named by the construct that produced each cell, not by a coordinate. The
+    // author never wrote a coordinate, so `S!1,2` tells them nothing about which
+    // line to change.
     super(
-      `circular reference between ${cells.join(' → ')}. ` +
+      `circular reference: ${(described ?? cells).join(' → ')}. ` +
         'Break the cycle in the source that produced these cells.',
     )
     this.name = 'CycleError'
     this.cells = cells
   }
+}
+
+function describeCell(id: string, book: CompiledWorkbook): string {
+  const bang = id.lastIndexOf('!')
+  const sheet = id.slice(0, bang)
+  const { r, c } = parseCellKey(id.slice(bang + 1))
+  const origin = originOf(book.registry, sheet, { r, c })
+  if (!origin) return `${sheet}!${toA1({ r, c })}`
+
+  const parts = [`"${origin.block}"`]
+  if (origin.column) parts.push(`column "${origin.column}"`)
+  if (origin.row !== undefined) parts.push(`row ${origin.row + 1}`)
+  else if (origin.part !== 'data') parts.push(origin.part)
+  return parts.join(' ')
 }
 
 export function evaluateWorkbook(book: CompiledWorkbook): ValueMap {
@@ -67,7 +85,11 @@ export function evaluateWorkbook(book: CompiledWorkbook): ValueMap {
 
     if (state.get(id) === 'visiting') {
       const from = stack.indexOf(id)
-      throw new CycleError([...stack.slice(from), id])
+      const cells = [...stack.slice(from), id]
+      throw new CycleError(
+        cells,
+        cells.map((cell) => describeCell(cell, book)),
+      )
     }
 
     const node = nodes.get(id)

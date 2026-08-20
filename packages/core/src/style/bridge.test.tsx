@@ -48,6 +48,29 @@ describe('number formats render the same way HTML and Excel do', () => {
     expect(formatValue('text', 'currency')).toBe('text')
     expect(formatValue(null, 'currency')).toBe('')
   })
+
+  it('honours the sections Excel reads, so the two renderers agree', () => {
+    // `positive;negative;zero;text`. Ignoring these showed -84,500 in the viewer
+    // where Excel showed (84,500) — the same cell reading differently in the two
+    // places is the one thing a "what you see is what exports" tool cannot afford.
+    expect(formatValue(-84_500, 'accounting')).toBe('(84,500)')
+    expect(formatValue(12_400, 'accounting')).toBe('12,400')
+    expect(formatValue(0, 'accounting')).toBe('-')
+
+    expect(formatValue(-5, '#,##0;(#,##0);"nil"')).toBe('(5)')
+    expect(formatValue(0, '#,##0;(#,##0);"nil"')).toBe('nil')
+  })
+
+  it('does not mistake a semicolon inside quotes for a section break', () => {
+    expect(formatValue(5, '#,##0" a;b"')).toBe('5')
+  })
+
+  it('scales the way Excel does', () => {
+    expect(formatValue(12_400_000_000, 'millions')).toBe('12,400M')
+    expect(formatValue(12_400_000, 'thousands')).toBe('12,400K')
+    // Excel rounds to the scale, so a small number really does read as 0M.
+    expect(formatValue(-84_500, 'millions')).toBe('-0M')
+  })
 })
 
 describe('html export', () => {
