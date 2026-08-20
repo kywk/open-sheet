@@ -215,6 +215,7 @@ function renderCell(
   const computed = cell.expr ? options.values?.get(`${sheet.name}!${r},${c}`) : (cell.value ?? null)
 
   let css = toCssText(style)
+  if (cell.wrap) css += `${css ? ';' : ''}white-space:normal;vertical-align:top`
   if (scale && typeof computed === 'number' && computed !== 0) {
     const pct = Math.min(100, Math.round((Math.abs(computed) / scale.max) * 100))
     css += `${css ? ';' : ''}background-image:linear-gradient(to right, ${scale.color} ${pct}%, transparent ${pct}%)`

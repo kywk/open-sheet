@@ -273,6 +273,7 @@ function emitTable(
       }
       if (column.format) cell.format = column.format
       if (column.style) cell.style = column.style
+      if (column.wrap) cell.wrap = true
       cells.set(target, cell)
     })
   })

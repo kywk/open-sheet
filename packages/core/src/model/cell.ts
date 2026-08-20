@@ -15,6 +15,8 @@ export interface Cell {
   style?: string
   format?: string
   span?: Size
+  /** Overrides the style's wrap setting for this cell. */
+  wrap?: boolean
   loc?: SourceLoc
 }
 

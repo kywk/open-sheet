@@ -135,3 +135,32 @@ describe('print setup — what a form needs and a grid does not', () => {
     expect(reopened.getWorksheet('Grid')?.pageSetup?.printTitlesRow).toBeFalsy()
   })
 })
+
+describe('long text in a form', () => {
+  it('wraps only the columns that asked', async () => {
+    // Excel does not wrap by default, so a description column narrower than its
+    // content spills into the next cell or is clipped when printed — invisible
+    // to any test that only reads values.
+    const book = compile(
+      <Workbook>
+        <Sheet name="S">
+          <Table
+            name="t"
+            data={[{ no: 1, desc: 'a description far longer than the column is wide' }]}
+            columns={[
+              col('no', { header: 'No', width: 6 }),
+              col('desc', { header: 'Description', width: 20, wrap: true }),
+            ]}
+          />
+        </Sheet>
+      </Workbook>,
+    )
+    const buffer = await new XlsxWriter().write(book)
+    const reopened = new ExcelJS.Workbook()
+    await reopened.xlsx.load(buffer as unknown as ArrayBuffer)
+    const sheet = reopened.getWorksheet('S')
+
+    expect(sheet?.getCell('B2').alignment).toMatchObject({ wrapText: true, vertical: 'top' })
+    expect(sheet?.getCell('A2').alignment?.wrapText).toBeFalsy()
+  })
+})

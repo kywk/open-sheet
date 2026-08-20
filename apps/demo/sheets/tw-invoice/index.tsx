@@ -88,7 +88,7 @@ export default (
           columns={[
             col('no', { header: '項次', width: 6 }),
             col('item', { header: '品項', width: 18 }),
-            col('spec', { header: '說明', width: 30 }),
+            col('spec', { header: '說明', width: 30, wrap: true }),
             col('qty', { header: '數量', format: 'number', width: 8 }),
             col('unit', { header: '單位', width: 7 }),
             col('price', { header: '單價', format: 'currency', width: 12 }),

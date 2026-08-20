@@ -17,6 +17,12 @@ export interface ColumnSpec<T = any> {
   style?: string
   /** Draw an in-cell bar across this column's data range. Live in Excel, drawn in HTML. */
   bar?: boolean | DataBar
+  /**
+   * Wrap long text instead of letting it overflow. Excel does not wrap by
+   * default, so a description column set narrower than its content spills into
+   * the neighbouring cell or is clipped when printed.
+   */
+  wrap?: boolean
   value?: (row: T, index: number) => CellValue
   /**
    * A builder expression, or a formula string for compatibility. A string is

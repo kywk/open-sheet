@@ -84,6 +84,7 @@ export interface ColumnOptions<T> {
   width?: number
   style?: string
   bar?: boolean | DataBar
+  wrap?: boolean
   value?: (row: T, index: number) => CellValue
   formula?: ((row: RowContext<T>) => ExprInput | null | undefined) | string
 }

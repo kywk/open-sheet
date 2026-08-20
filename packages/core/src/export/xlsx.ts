@@ -146,6 +146,9 @@ function writeCell(
 
   const style = resolveStyle(theme, cell.style)
   if (style) Object.assign(target, toExcelStyle(style))
+  if (cell.wrap) {
+    target.alignment = { ...target.alignment, wrapText: true, vertical: 'top' }
+  }
 
   const format = numberFormat(cell.format ?? style?.format)
   if (format) target.numFmt = format

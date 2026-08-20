@@ -57,6 +57,19 @@ Emits a **native** Excel `dataBar` rule over the column's data range, so it
 rescales when the numbers change, and the same rule renders as a gradient in
 HTML. Use it where a reader is comparing magnitudes down a column.
 
+## Long text
+
+Excel does not wrap. A description column set narrower than its content spills
+into the neighbouring cell, or is clipped when printed — and no test that reads
+values will notice:
+
+```tsx
+col('spec', { header: '說明', width: 30, wrap: true })
+```
+
+Set it on the columns that hold sentences, not on the whole table: wrapping a
+figures column just makes the rows taller.
+
 ## Printing
 
 A workbook of grids and a workbook of forms want opposite defaults, so the sheet
