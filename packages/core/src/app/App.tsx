@@ -55,8 +55,10 @@ export function App() {
           </div>
         ) : null}
 
-        {/* Keyed by id so switching workbooks resets the sheet and selection,
-            rather than an effect racing the new compile. */}
+        {/* Keyed by id, not by the workbook object: an edit written back from
+            the Inspector reloads the module and produces a new object, and
+            remounting on that threw the reader back to the first sheet with the
+            panel closed — losing your place on every single-cell edit. */}
         {view === 'workbooks' && state.status === 'ready' ? (
           <WorkbookView key={state.workbook.id} workbook={state.workbook} />
         ) : null}
@@ -65,12 +67,51 @@ export function App() {
   )
 }
 
-function WorkbookView({ workbook }: { workbook: LoadedWorkbook }) {
-  const [sheetIndex, setSheetIndex] = useState(0)
-  const [selection, setSelection] = useState<Selection>({ r: 0, c: 0 })
-  const [panel, setPanel] = useState<'none' | 'inspect' | 'design'>('none')
+/**
+ * Writing an edit back through the Inspector changes the workbook source, which
+ * Vite answers with a full page reload — nothing in the graph accepts the HMR
+ * update. Without this, every single-cell edit threw the reader back to the
+ * first sheet with the panel closed, which makes editing several cells in a row
+ * far more annoying than the edit itself is worth.
+ */
+interface Place {
+  sheetIndex: number
+  selection: Selection
+  panel: 'none' | 'inspect' | 'design'
+}
 
-  const sheet = workbook.book.sheets[sheetIndex]
+function placeKey(id: string): string {
+  return `open-sheet:place:${id}`
+}
+
+function readPlace(id: string): Place | undefined {
+  try {
+    const raw = sessionStorage.getItem(placeKey(id))
+    return raw ? (JSON.parse(raw) as Place) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function WorkbookView({ workbook }: { workbook: LoadedWorkbook }) {
+  const restored = readPlace(workbook.id)
+  const [sheetIndex, setSheetIndex] = useState(restored?.sheetIndex ?? 0)
+  const [selection, setSelection] = useState<Selection>(restored?.selection ?? { r: 0, c: 0 })
+  const [panel, setPanel] = useState<'none' | 'inspect' | 'design'>(restored?.panel ?? 'none')
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        placeKey(workbook.id),
+        JSON.stringify({ sheetIndex, selection, panel }),
+      )
+    } catch {
+      // a viewer that cannot remember where you were is still a working viewer
+    }
+  }, [workbook.id, sheetIndex, selection, panel])
+
+  const safeIndex = Math.min(sheetIndex, Math.max(workbook.book.sheets.length - 1, 0))
+  const sheet = workbook.book.sheets[safeIndex]
   const sheetName = sheet?.name
 
   // Publish where the reader is, so /current-sheet can answer "this one".
@@ -100,13 +141,13 @@ function WorkbookView({ workbook }: { workbook: LoadedWorkbook }) {
       <FormulaBar
         book={workbook.book}
         values={workbook.values}
-        sheetIndex={sheetIndex}
+        sheetIndex={safeIndex}
         selection={selection}
       />
       <div className="os-body">
         {sheet ? (
           <Grid
-            key={sheetIndex}
+            key={safeIndex}
             sheet={sheet}
             values={workbook.values}
             selection={selection}
@@ -125,7 +166,7 @@ function WorkbookView({ workbook }: { workbook: LoadedWorkbook }) {
           <DesignPanel workbookId={workbook.id} onClose={() => setPanel('none')} />
         ) : null}
       </div>
-      <SheetTabs book={workbook.book} active={sheetIndex} onSelect={setSheetIndex} />
+      <SheetTabs book={workbook.book} active={safeIndex} onSelect={setSheetIndex} />
     </>
   )
 }

@@ -619,3 +619,24 @@ body {
   background: var(--os-bg);
   cursor: pointer;
 }
+
+.os-unset {
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--os-muted);
+  opacity: 0.8;
+}
+.os-color.is-unset {
+  opacity: 0.45;
+  border-style: dashed;
+}
+.os-why {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 2px solid var(--os-hairline);
+  padding-left: 8px;
+}

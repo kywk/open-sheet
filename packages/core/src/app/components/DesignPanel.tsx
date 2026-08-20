@@ -110,41 +110,78 @@ export function DesignPanel({ workbookId, onClose }: Props) {
 
       {!state ? <p className="os-muted">Loading…</p> : null}
 
-      {state && !state.editable ? <p className="os-muted os-why">{state.reason}</p> : null}
+      {state && !state.editable ? (
+        <div className="os-why">
+          <p className="os-muted">{state.reason}</p>
+          <p className="os-muted">Add one to the workbook, then reload:</p>
+          <pre className="os-markdown">{`export const design: DesignSystem = {
+  palette: { accent: '#1d4ed8' },
+  formats: { currency: '#,##0' },
+}`}</pre>
+          <p className="os-muted">
+            Or ask your agent for <code>/create-theme</code>.
+          </p>
+        </div>
+      ) : null}
 
       {state?.editable
-        ? DESIGN_TOKENS.map((token) => (
-            <section key={`${token.group}.${token.key}`}>
-              <label htmlFor={`os-d-${token.key}`}>{token.label}</label>
-              {token.kind === 'color' ? (
-                <input
-                  id={`os-d-${token.key}`}
-                  type="color"
-                  className="os-color"
-                  disabled={busy}
-                  value={tokenValue(token.group, token.key) || '#000000'}
-                  onChange={(event) => void apply(token.group, token.key, event.target.value)}
-                />
-              ) : (
+        ? DESIGN_TOKENS.map((token) => {
+            const current = tokenValue(token.group, token.key)
+            const set = current !== ''
+
+            if (token.kind === 'color') {
+              return (
+                <section key={`${token.group}.${token.key}`}>
+                  <label htmlFor={`os-d-${token.key}`}>
+                    {token.label}
+                    {/* An unset colour must not be shown as black — it falls
+                        through to the theme, and a swatch claiming #000000 says
+                        the opposite. */}
+                    {set ? null : <span className="os-unset">theme default</span>}
+                  </label>
+                  <input
+                    id={`os-d-${token.key}`}
+                    type="color"
+                    className={`os-color${set ? '' : ' is-unset'}`}
+                    disabled={busy}
+                    value={set ? current : '#ffffff'}
+                    onChange={(event) => void apply(token.group, token.key, event.target.value)}
+                  />
+                </section>
+              )
+            }
+
+            const choices =
+              token.kind === 'font'
+                ? FONT_CHOICES.map((font) => ({ value: font, label: font }))
+                : (FORMAT_CHOICES[token.key] ?? [])
+            // A value the list does not know about is still set. Dropping to
+            // "(theme default)" tells the author their setting did not take,
+            // and sends them debugging something that is working.
+            const known = choices.some((choice) => choice.value === current)
+
+            return (
+              <section key={`${token.group}.${token.key}`}>
+                <label htmlFor={`os-d-${token.key}`}>{token.label}</label>
                 <select
                   id={`os-d-${token.key}`}
                   disabled={busy}
-                  value={tokenValue(token.group, token.key)}
+                  value={current}
                   onChange={(event) => void apply(token.group, token.key, event.target.value)}
                 >
                   <option value="">(theme default)</option>
-                  {(token.kind === 'font'
-                    ? FONT_CHOICES.map((font) => ({ value: font, label: font }))
-                    : (FORMAT_CHOICES[token.key] ?? [])
-                  ).map((choice) => (
+                  {set && !known ? (
+                    <option value={current}>{current} — set in this workbook</option>
+                  ) : null}
+                  {choices.map((choice) => (
                     <option key={choice.value} value={choice.value}>
                       {choice.label}
                     </option>
                   ))}
                 </select>
-              )}
-            </section>
-          ))
+              </section>
+            )
+          })
         : null}
 
       {state?.editable ? (

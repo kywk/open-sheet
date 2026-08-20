@@ -62,6 +62,12 @@ export interface CommentRequest {
 /**
  * Notes are stored in the source next to the construct they are about, so
  * `/apply-comments` finds them with the context needed to act on them.
+ *
+ * The comment form depends on where it lands. A `<Table>` lives in JSX children,
+ * where `//` is not a comment at all — it is a bare text node, and the workbook
+ * stops compiling with an error that looks unrelated to leaving a note. JSX
+ * positions get `{/* … *\/}`; a JS position, such as beside a `col()` inside a
+ * `columns={[…]}` array, keeps `//`.
  */
 export function addComment(request: CommentRequest): string {
   const ast = parseWorkbook(request.source)
@@ -76,17 +82,53 @@ export function addComment(request: CommentRequest): string {
 
   const where = describe(request.origin)
   const body = request.text.replace(/\s+/g, ' ').trim()
-  const comment = `${indent}// ${COMMENT_MARKER}${where ? ` (${where})` : ''}: ${body}\n`
+  const label = `${COMMENT_MARKER} (${where}): ${body}`
+  const comment = inJsxChildren(ast, element)
+    ? `${indent}{/* ${label} */}\n`
+    : `${indent}// ${label}\n`
 
   return request.source.slice(0, lineStart) + comment + request.source.slice(lineStart)
 }
 
-function describe(origin: CellOrigin): string {
-  if (origin.column === undefined) return origin.part
-  if (origin.part === 'data' && origin.row !== undefined) {
-    return `column "${origin.column}", row ${origin.row + 1}`
+/** True when the element sits among another element's children, not in an expression. */
+function inJsxChildren(ast: Node, element: Node): boolean {
+  let found = false
+  walkNodes(ast, (node) => {
+    if (found || node.type !== 'JSXElement') return
+    for (const child of node.children ?? []) {
+      if (child === element) found = true
+    }
+  })
+  return found
+}
+
+type Node = Record<string, any>
+
+function walkNodes(node: Node | Node[] | null | undefined, visit: (node: Node) => void): void {
+  if (!node) return
+  if (Array.isArray(node)) {
+    for (const child of node) walkNodes(child, visit)
+    return
   }
-  return `column "${origin.column}", ${origin.part}`
+  if (typeof node.type !== 'string') return
+  visit(node)
+  for (const key of Object.keys(node)) {
+    if (key === 'loc' || key.endsWith('Comments')) continue
+    const value = node[key]
+    if (value && typeof value === 'object') walkNodes(value as Node, visit)
+  }
+}
+
+function describe(origin: CellOrigin): string {
+  // The block name matters: one data array can feed two tables, and without it
+  // "column v, row 2" does not say which. Position in the file is not enough —
+  // it stops being evidence the moment someone moves the code.
+  const block = `"${origin.block}"`
+  if (origin.column === undefined) return `${block} ${origin.part}`
+  if (origin.part === 'data' && origin.row !== undefined) {
+    return `${block} column "${origin.column}", row ${origin.row + 1}`
+  }
+  return `${block} column "${origin.column}", ${origin.part}`
 }
 
 export function listComments(source: string): { line: number; text: string }[] {
@@ -94,7 +136,12 @@ export function listComments(source: string): { line: number; text: string }[] {
   source.split('\n').forEach((line, index) => {
     const at = line.indexOf(COMMENT_MARKER)
     if (at === -1) return
-    out.push({ line: index + 1, text: line.slice(at + COMMENT_MARKER.length).replace(/^\W+/, '') })
+    const text = line
+      .slice(at + COMMENT_MARKER.length)
+      .replace(/\*\/\}?\s*$/, '')
+      .replace(/^\W+/, '')
+      .trim()
+    out.push({ line: index + 1, text })
   })
   return out
 }

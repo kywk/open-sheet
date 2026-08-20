@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { compile } from '../compile/compile.js'
+import { originOf } from '../compile/origin.js'
 import { fromA1 } from '../model/a1.js'
 import {
   addComment,
@@ -8,7 +9,7 @@ import {
   listComments,
   NotEditableError,
 } from './edit.js'
-import { findEditTarget, originOf } from './locate.js'
+import { findEditTarget, parseWorkbook } from './locate.js'
 
 const SOURCE = `import { Sheet, Table, Workbook, col, sub } from '@open-sheet/core'
 
@@ -187,6 +188,30 @@ describe('editing', () => {
 })
 
 describe('comments', () => {
+  it('leaves the file parseable — the test this feature shipped without', () => {
+    // The original test asserted the marker was found and indented correctly and
+    // stopped there. `//` in JSX children is not a comment, it is a bare text
+    // node, so every note ever left broke the workbook with an error that looked
+    // nothing like "you left a note".
+    const commented = addComment({
+      source: SOURCE,
+      origin: at('P&L', 'B3') as never,
+      text: 'check this',
+    })
+    expect(() => parseWorkbook(commented)).not.toThrow()
+    expect(commented).toContain('{/* @sheet-comment')
+    expect(commented).not.toMatch(/^\s*\/\/ @sheet-comment/m)
+  })
+
+  it('names the block, because one array can feed two tables', () => {
+    const commented = addComment({
+      source: SOURCE,
+      origin: at('P&L', 'B3') as never,
+      text: 'which table?',
+    })
+    expect(commented).toContain('"pl" column "revenue", row 2')
+  })
+
   it('writes a marker above the block, with the cell it refers to', () => {
     const origin = at('P&L', 'B3')
     const commented = addComment({
@@ -198,6 +223,8 @@ describe('comments', () => {
     const found = listComments(commented)
     expect(found).toHaveLength(1)
     expect(found[0]?.text).toContain('should this be net of returns?')
+    // …and the closing brace of the JSX comment is not part of the text.
+    expect(found[0]?.text).not.toContain('*/')
     expect(commented).toContain('column "revenue", row 2')
   })
 
@@ -208,7 +235,7 @@ describe('comments', () => {
       text: 'check',
     })
     const line = commented.split('\n').find((l) => l.includes('@sheet-comment')) as string
-    expect(line.startsWith('      //')).toBe(true)
+    expect(line.startsWith('      {/*')).toBe(true)
   })
 
   it('finds nothing in a clean file', () => {
