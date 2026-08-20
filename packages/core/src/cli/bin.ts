@@ -14,6 +14,7 @@ Commands:
   preview   Serve what build wrote
 
 Options:
+  --help         Show this, from any command
   --out <dir>    Output directory (default: dist)
   --root <dir>   Workspace root (default: cwd)
   --port <n>     Port for dev/preview
@@ -31,10 +32,16 @@ function flag(argv: string[], name: string): string | undefined {
   return argv[index + 1]
 }
 
+const HELP = ['--help', '-h', 'help']
+const BUILD_FLAGS = ['--out', '--root', '--no-csv', '--html', '--pdf']
+
 export async function run(argv: string[]): Promise<number> {
   const command = argv[0]
 
-  if (!command || command === '--help' || command === '-h' || command === 'help') {
+  // Anywhere, not only first. `open-sheet build --help` used to compile the
+  // whole workspace and overwrite dist/ — reaching for --help should never be
+  // the thing that destroys your output.
+  if (!command || argv.some((arg) => HELP.includes(arg))) {
     process.stdout.write(USAGE)
     return command ? 0 : 1
   }
@@ -67,6 +74,17 @@ export async function run(argv: string[]): Promise<number> {
 
   if (command !== 'build') {
     process.stderr.write(`unknown command: ${command}\n\n${USAGE}`)
+    return 1
+  }
+
+  const unknown = argv
+    .slice(1)
+    .filter((arg) => arg.startsWith('--'))
+    .filter((arg) => !BUILD_FLAGS.includes(arg))
+  if (unknown.length > 0) {
+    process.stderr.write(
+      `unknown option${unknown.length > 1 ? 's' : ''}: ${unknown.join(', ')}\n\n${USAGE}`,
+    )
     return 1
   }
 

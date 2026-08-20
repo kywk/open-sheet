@@ -63,16 +63,60 @@ anywhere an expression can, including a KPI value or a whole column formula:
 col('mirror', { formula: (r) => r.cell('amount') })
 ```
 
-## Aggregating across columns
+## Periods as columns
 
-`sum` and friends are variadic, not only range-takers. When months are columns
-rather than rows — a matrix — this is how a row total is written:
+The reference examples above put periods in rows. Cost and budget analysis
+usually does the opposite — one row per account, one column per month — and that
+layout needs two things the row-wise examples never show.
+
+**`sum` is variadic**, so a row total is a spread, not a range:
 
 ```tsx
-const MONTHS = [{ key: 'jan' }, { key: 'feb' }, { key: 'mar' }]
+const MONTHS = [
+  { key: 'jan', header: 'Jan' },
+  { key: 'feb', header: 'Feb' },
+  { key: 'mar', header: 'Mar' },
+]
 
-col('total', { formula: (r) => sum(...MONTHS.map((m) => r.cell(m.key))) })
+const services = [
+  { service: 'Compute', jan: 128_400, feb: 141_200, mar: 155_900 },
+  { service: 'Storage', jan: 22_100, feb: 21_800, mar: 24_600 },
+]
+
+<Table
+  name="costs"
+  data={services}
+  columns={[
+    col('service', { header: 'Service', width: 20 }),
+    ...MONTHS.map((m) => col(m.key, { header: m.header, format: 'currency' })),
+    col('total', {
+      header: 'Q1',
+      format: 'currency',
+      formula: (r) => sum(...MONTHS.map((m) => r.cell(m.key))),
+    }),
+    col('mom', {
+      header: 'MoM',
+      format: 'percent',
+      // Month-on-month reads sideways: this column against the one before it.
+      formula: (r) => sub(div(r.cell('mar'), r.cell('feb')), 1),
+    }),
+  ]}
+  total={Object.fromEntries(MONTHS.map((m) => [m.key, 'sum' as const]))}
+/>
 ```
+
+**Two tables fed the same array line up row for row**, so a second sheet can
+reference across without any alignment work:
+
+```tsx
+// On another sheet, same `services` array, same order:
+col('share', {
+  formula: (r) => div(ref('costs').cell('total', r.index), ref('costs').total('total')),
+})
+```
+
+`r.index` is the row's position in the data, which is what makes this safe —
+insert a service and both tables move together.
 
 ## Guarding a division
 
