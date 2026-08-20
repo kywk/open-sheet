@@ -16,7 +16,7 @@ import type { Addr, Rect, Size } from '../model/geometry.js'
 import { isRef, type Ref } from '../refs/ref.js'
 import type { DesignSystem } from '../style/design.js'
 import type { KeyValueEntry } from './components.js'
-import type { Aggregate, Block, SheetNode, TableNode, WorkbookNode } from './nodes.js'
+import type { Aggregate, Block, PrintSetup, SheetNode, TableNode, WorkbookNode } from './nodes.js'
 import type { Registry, TableAnchor } from './registry.js'
 import { makeRowContext } from './row-context.js'
 
@@ -37,10 +37,13 @@ export interface PlacedChart {
 
 export interface CompiledSheet {
   name: string
+  print?: PrintSetup
   cells: Map<CellKey, Cell>
   columnWidths: Map<number, number>
   conditionalFormats: ConditionalFormat[]
   charts: PlacedChart[]
+  /** Rows to repeat at the top of every printed page, zero-based inclusive. */
+  repeatRows?: { from: number; to: number }
   freeze?: Addr
   bounds: Size
 }
@@ -118,6 +121,21 @@ function emitSheet(
     bounds: boundsOf(placements),
   }
   if (sheet.freeze) compiled.freeze = parseFreeze(sheet.freeze)
+  if (sheet.print) compiled.print = sheet.print
+
+  // The header row of the first table is what a reader needs on page two.
+  if (sheet.print?.repeatHeader) {
+    for (const anchor of registry.values()) {
+      if (
+        anchor.kind === 'table' &&
+        anchor.sheet === sheet.name &&
+        anchor.headerRow !== undefined
+      ) {
+        compiled.repeatRows = { from: anchor.headerRow, to: anchor.headerRow }
+        break
+      }
+    }
+  }
   return compiled
 }
 

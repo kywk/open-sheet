@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs'
 import { describe, expect, it } from 'vitest'
 import { compile } from '../compile/compile.js'
+import { col, Sheet, Table, Workbook } from '../compile/components.js'
 import { budget } from '../compile/fixtures.js'
 import { evaluateWorkbook } from '../formula/evaluate.js'
 import { XlsxWriter } from './xlsx.js'
@@ -75,5 +76,62 @@ describe('cached results', () => {
     }
     expect(cell.formula).toBeDefined()
     expect(cell.result).toBeUndefined()
+  })
+})
+
+describe('print setup — what a form needs and a grid does not', () => {
+  const form = () =>
+    compile(
+      <Workbook>
+        <Sheet
+          name="Invoice"
+          print={{ orientation: 'portrait', size: 'A4', fitToWidth: true, repeatHeader: true }}
+        >
+          <Table
+            name="lines"
+            data={[
+              { item: 'a', amount: 1 },
+              { item: 'b', amount: 2 },
+            ]}
+            columns={[col('item', { header: 'Item' }), col('amount', { header: 'Amount' })]}
+          />
+        </Sheet>
+      </Workbook>,
+    )
+
+  it('writes orientation, paper size and fit-to-width', async () => {
+    const buffer = await new XlsxWriter().write(form())
+    const reopened = new ExcelJS.Workbook()
+    await reopened.xlsx.load(buffer as unknown as ArrayBuffer)
+    const setup = reopened.getWorksheet('Invoice')?.pageSetup
+
+    // A form printed landscape is a form nobody can use, and ExcelJS defaults to
+    // landscape with no fit.
+    expect(setup?.orientation).toBe('portrait')
+    expect(setup?.paperSize).toBe(9) // A4; Excel knows numbers, not names
+    expect(setup?.fitToWidth).toBe(1)
+    expect(setup?.fitToPage).toBe(true)
+  })
+
+  it('repeats the table header on every printed page', async () => {
+    const buffer = await new XlsxWriter().write(form())
+    const reopened = new ExcelJS.Workbook()
+    await reopened.xlsx.load(buffer as unknown as ArrayBuffer)
+    // Page two of a long table without its header is unreadable.
+    expect(reopened.getWorksheet('Invoice')?.pageSetup?.printTitlesRow).toBe('1:1')
+  })
+
+  it('leaves a sheet that asked for nothing alone', async () => {
+    const plain = compile(
+      <Workbook>
+        <Sheet name="Grid">
+          <Table name="t" data={[{ a: 1 }]} columns={[col('a')]} />
+        </Sheet>
+      </Workbook>,
+    )
+    const buffer = await new XlsxWriter().write(plain)
+    const reopened = new ExcelJS.Workbook()
+    await reopened.xlsx.load(buffer as unknown as ArrayBuffer)
+    expect(reopened.getWorksheet('Grid')?.pageSetup?.printTitlesRow).toBeFalsy()
   })
 })

@@ -33,13 +33,21 @@ export function toHtml(book: CompiledWorkbook, options: HtmlOptions = {}): strin
   const sheets = book.sheets.map((sheet) => renderSheet(sheet, theme, options)).join('\n')
   const title = escapeHtml(options.title ?? 'open-sheet')
 
+  // A workbook of forms and a workbook of wide grids want opposite defaults, so
+  // the sheets decide: any sheet asking for portrait wins, since a form printed
+  // sideways is unusable while a grid merely wraps.
+  const declared = book.sheets.map((sheet) => sheet.print?.orientation).filter(Boolean)
+  const orientation =
+    options.orientation ?? (declared.includes('portrait') ? 'portrait' : 'landscape')
+  const size = book.sheets.find((sheet) => sheet.print?.size)?.print?.size ?? 'A4'
+
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title>
-<style>${stylesheet(theme, options.orientation ?? 'landscape')}</style>
+<style>${stylesheet(theme, orientation, size)}</style>
 </head>
 <body>
 <main class="os-workbook">
@@ -50,7 +58,7 @@ ${sheets}
 `
 }
 
-function stylesheet(theme: Theme, orientation: 'portrait' | 'landscape'): string {
+function stylesheet(theme: Theme, orientation: 'portrait' | 'landscape', size: string): string {
   const palette = Object.entries(theme.palette)
     .map(([name, value]) => `--os-${name}: ${value};`)
     .join('\n    ')
@@ -98,7 +106,7 @@ function stylesheet(theme: Theme, orientation: 'portrait' | 'landscape'): string
     .os-sheet:last-child { break-after: auto; }
     thead { display: table-header-group; }
     tr { break-inside: avoid; }
-    @page { size: A4 ${orientation}; margin: 12mm; }
+    @page { size: ${size} ${orientation}; margin: 12mm; }
   }
   @media (prefers-color-scheme: dark) {
     body { background: #0b1220; color: #e2e8f0; }

@@ -17,6 +17,7 @@ import type {
   KpiBandNode,
   KpiItem,
   NoteNode,
+  PrintSetup,
   RowNode,
   SheetNode,
   SpacerNode,
@@ -53,6 +54,8 @@ export function Sheet(props: {
   name: string
   freeze?: string
   origin?: Addr
+  /** How this sheet prints. Forms want `{ orientation: 'portrait', fitToWidth: true }`. */
+  print?: PrintSetup
   children?: unknown
 }): SheetNode {
   if (!props.name) throw new TypeError('<Sheet> requires a name')
@@ -63,6 +66,7 @@ export function Sheet(props: {
   }
   if (props.freeze !== undefined) node.freeze = props.freeze
   if (props.origin !== undefined) node.origin = props.origin
+  if (props.print !== undefined) node.print = props.print
   return node
 }
 

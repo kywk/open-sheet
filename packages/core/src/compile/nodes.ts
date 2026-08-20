@@ -119,11 +119,26 @@ export type Block =
   | SpacerNode
   | ChartNode
 
+export type PageSize = 'A4' | 'A3' | 'Letter' | 'Legal'
+export type Orientation = 'portrait' | 'landscape'
+
+export interface PrintSetup {
+  /** Portrait for forms, landscape for wide grids. Default: landscape. */
+  orientation?: Orientation
+  size?: PageSize
+  /** Scale the sheet to one page wide. Forms almost always want this. */
+  fitToWidth?: boolean
+  /** Repeat the table header on every printed page. */
+  repeatHeader?: boolean
+  margin?: number
+}
+
 export interface SheetNode {
   kind: 'sheet'
   name: string
   freeze?: string
   origin?: Addr
+  print?: PrintSetup
   children: Block[]
 }
 

@@ -62,6 +62,37 @@ export class XlsxWriter implements WorkbookWriter {
         })
       }
 
+      // A form printed landscape, or a table whose header does not repeat on
+      // page two, is a form nobody can use. ExcelJS defaults neither.
+      if (sheet.print) {
+        const { orientation, size, fitToWidth, margin } = sheet.print
+        worksheet.pageSetup = {
+          ...worksheet.pageSetup,
+          orientation: orientation ?? 'portrait',
+          paperSize: PAPER[size ?? 'A4'],
+          ...(fitToWidth ? { fitToPage: true, fitToWidth: 1, fitToHeight: 0 } : {}),
+          ...(margin === undefined
+            ? {}
+            : {
+                margins: {
+                  left: margin,
+                  right: margin,
+                  top: margin,
+                  bottom: margin,
+                  header: margin / 2,
+                  footer: margin / 2,
+                },
+              }),
+        }
+      }
+
+      if (sheet.repeatRows) {
+        worksheet.pageSetup = {
+          ...worksheet.pageSetup,
+          printTitlesRow: `${sheet.repeatRows.from + 1}:${sheet.repeatRows.to + 1}`,
+        }
+      }
+
       if (sheet.freeze && (sheet.freeze.r > 0 || sheet.freeze.c > 0)) {
         worksheet.views = [
           {
@@ -83,6 +114,9 @@ export class XlsxWriter implements WorkbookWriter {
     return injectCharts(Buffer.from(buffer as ArrayBuffer), book)
   }
 }
+
+/** Excel's numeric paper sizes; the names mean nothing to it. */
+const PAPER: Record<string, number> = { Letter: 1, Legal: 5, A3: 8, A4: 9 }
 
 function quote(sheet: string): string {
   return /^[A-Za-z_][A-Za-z0-9_.]*$/.test(sheet) ? sheet : `'${sheet.replace(/'/g, "''")}'`
