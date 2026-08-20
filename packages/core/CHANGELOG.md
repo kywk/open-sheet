@@ -1,5 +1,58 @@
 # @open-sheet/core
 
+## 0.1.4
+
+### Patch Changes
+
+- aac914b: `SUMPRODUCT` works for what it is actually for. The evaluator now carries array
+  values through comparisons and arithmetic, so the standard ranking idiom —
+  `SUMPRODUCT((range>cell)*1)+1` — computes instead of returning `#VALUE!`.
+  Summing one plain range is just `SUM`; array semantics are the whole reason to
+  reach for `SUMPRODUCT`.
+  
+  Anything the evaluator cannot compute now reports `#NOT_EVALUATED` rather than a
+  fabricated `#VALUE!`. That kept a made-up Excel error out of the exported cache,
+  and stops `iferror` from swallowing a gap in this evaluator as though it were a
+  real spreadsheet condition.
+  
+  `raw` accepts a tagged template with interpolated references —
+  ``raw`=LARGE(${ref('costs').column('delta')}, 1)` `` — so the escape hatch no
+  longer requires writing the cell addresses the framework exists to avoid.
+- 88b8fa0: Build failures name the workbook and file that failed, instead of leaving you to
+  guess which of several it came from. A duplicate block name used twice on one
+  sheet now says so rather than naming the same sheet twice.
+  
+  `r.cell()` on a field that is in the data but has no column explains both ways
+  forward, and names the tradeoff: `r.data.x` bakes the value into the exported
+  formula as a literal, so the recipient cannot change it.
+- 8d35c2d: The HTML and viewer renderers honour Excel's format sections
+  (`positive;negative;zero;text`). The accounting format showed `-84,500` where
+  Excel showed `(84,500)`, and zero as `0` where Excel showed `-` — the same cell
+  reading differently in the two places.
+  
+  Cycle errors name the construct that produced each cell — `"costs" column "b"
+  row 1` — rather than an internal coordinate the author never wrote.
+- 4964e9c: `--help` short-circuits from any command. `open-sheet build --help` used to
+  compile the whole workspace and overwrite `dist/`. Unknown options are rejected
+  rather than silently ignored, so a mistyped `--xlsx` says so.
+  
+  Documents that CSV exports raw values without number formats, the
+  periods-as-columns layout that variadic `sum` and `r.index` exist for, and that a
+  table title merges to the table's width on its own.
+- 46b21ad: Leaving a note from the Inspector no longer breaks the workbook. The marker was
+  written as `//`, which is a comment in JS but a bare text node in JSX children —
+  where a `<Table>` always sits — so every note ever left stopped the workbook
+  compiling, with an error that looked nothing like "you left a note". JSX
+  positions now get `{/* … */}`. Markers name the block, since one data array can
+  feed several tables.
+  
+  The Design panel stops misreporting state: an unset colour is shown as unset
+  rather than as black, and a value the dropdown does not know about is shown as
+  set rather than as the theme default. Its empty state says what to add.
+  
+  The viewer keeps your sheet, selection, and open panel across the reload that
+  writing an edit triggers.
+
 ## 0.1.3
 
 ### Patch Changes
