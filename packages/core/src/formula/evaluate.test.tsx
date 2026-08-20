@@ -5,7 +5,7 @@ import { budget, QUARTERS } from '../compile/fixtures.js'
 import { cellKey } from '../model/cell.js'
 import { ref } from '../refs/ref.js'
 import { CycleError, evaluateWorkbook } from './evaluate.js'
-import { div, raw } from './expr.js'
+import { div, gt, if_, iferror, raw, sub } from './expr.js'
 import { display, isNotEvaluated } from './value.js'
 
 function valuesOf(node: unknown) {
@@ -184,5 +184,64 @@ describe('cycles', () => {
     }
     expect(() => valuesOf(book)).toThrow(CycleError)
     expect(() => valuesOf(book)).toThrow(/circular reference/)
+  })
+})
+
+describe('functions that exist to catch errors must actually see them', () => {
+  const book = (formula: unknown) =>
+    compile({
+      kind: 'workbook',
+      children: [
+        {
+          kind: 'sheet',
+          name: 'S',
+          children: [
+            {
+              kind: 'table',
+              name: 't',
+              variant: 'grid',
+              showHeader: false,
+              data: [{ cur: 10, prev: 0 }],
+              columns: [{ key: 'cur' }, { key: 'prev' }, { key: 'out', formula }],
+            },
+          ],
+        },
+      ],
+    })
+
+  it('IFERROR returns its fallback instead of the error', () => {
+    // Reported from a real workbook: a month-on-month column where the previous
+    // month is zero. Without this, an author is pushed to fake the denominator.
+    const values = evaluateWorkbook(
+      book((r: { cell: (k: string) => never }) =>
+        iferror(sub(div(r.cell('cur'), r.cell('prev')), 1), ''),
+      ),
+    )
+    expect(values.get('S!0,2')).toBe('')
+  })
+
+  it('IFERROR passes a good value straight through', () => {
+    const values = evaluateWorkbook(
+      book((r: { cell: (k: string) => never }) => iferror(div(r.cell('cur'), 2), 'oops')),
+    )
+    expect(values.get('S!0,2')).toBe(5)
+  })
+
+  it('IF evaluates only the branch it takes', () => {
+    // Excel's IF is lazy. Evaluating both branches makes a guarded division
+    // fail on exactly the rows the guard exists for.
+    const values = evaluateWorkbook(
+      book((r: { cell: (k: string) => never }) =>
+        if_(gt(r.cell('prev'), 0), div(r.cell('cur'), r.cell('prev')), 0),
+      ),
+    )
+    expect(values.get('S!0,2')).toBe(0)
+  })
+
+  it('still propagates an error nothing is catching', () => {
+    const values = evaluateWorkbook(
+      book((r: { cell: (k: string) => never }) => div(r.cell('cur'), r.cell('prev'))),
+    )
+    expect(display(values.get('S!0,2') as never)).toBe('#DIV/0!')
   })
 })

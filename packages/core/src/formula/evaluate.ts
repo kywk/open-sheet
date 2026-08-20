@@ -233,7 +233,57 @@ function normalizeForCompare(value: Computed): string | number | boolean | null 
   return value as string | number | boolean
 }
 
+/**
+ * Functions whose whole purpose is to see an error, or to not evaluate a branch.
+ * Evaluating their arguments eagerly — the ordinary path below — means IFERROR
+ * can never catch anything and IF fails on exactly the rows its guard exists
+ * for. Excel evaluates these lazily; so must we.
+ *
+ * This matters beyond correctness: when a guarded division reports #DIV/0!
+ * anyway, the tempting fix is to fudge the denominator, and a fabricated number
+ * is the one failure this project cannot afford. IFERROR working is what lets an
+ * author stay honest.
+ */
+function applyLazyFn(
+  expr: Expr & { k: 'fn' },
+  context: ResolveContext,
+  read: Reader,
+): Computed | undefined {
+  const name = expr.name.toUpperCase()
+
+  if (name === 'IFERROR' || name === 'IFNA') {
+    const [value, fallback] = expr.args
+    if (!value || !fallback) return undefined
+    const result = evaluateExpr(value, context, read)
+    if (isNotEvaluated(result)) return NOT_EVALUATED
+    const caught = isExcelError(result) && (name === 'IFERROR' || result.code === '#N/A')
+    return caught ? evaluateExpr(fallback, context, read) : result
+  }
+
+  if (name === 'IF') {
+    const [test, then, otherwise] = expr.args
+    if (!test || !then) return undefined
+    const condition = evaluateExpr(test, context, read)
+    if (isNotEvaluated(condition)) return NOT_EVALUATED
+    if (isExcelError(condition)) return condition
+    const taken = truthy(condition) ? then : otherwise
+    return taken ? evaluateExpr(taken, context, read) : false
+  }
+
+  return undefined
+}
+
+function truthy(value: Computed): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value === 'string') return value.toUpperCase() === 'TRUE'
+  return false
+}
+
 function applyFn(expr: Expr & { k: 'fn' }, context: ResolveContext, read: Reader): Computed {
+  const lazy = applyLazyFn(expr, context, read)
+  if (lazy !== undefined) return lazy
+
   const implementation = lookup(expr.name)
   if (!implementation) return NOT_EVALUATED
 

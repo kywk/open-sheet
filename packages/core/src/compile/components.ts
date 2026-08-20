@@ -1,8 +1,9 @@
-import type { Expr, Scalar } from '../formula/expr.js'
+import type { Expr, ExprInput, Scalar } from '../formula/expr.js'
 import { parseFormula } from '../formula/parse.js'
 import type { CellValue } from '../model/cell.js'
 import type { Addr, Size } from '../model/geometry.js'
 import type { Ref, RowContext } from '../refs/ref.js'
+import { isRef } from '../refs/ref.js'
 import { asBlocks, asRuns, asSheets } from './children.js'
 import type {
   Aggregate,
@@ -29,7 +30,8 @@ import type {
  * evaluates, and a dev-mode warning points at the structural equivalent — an
  * address written by hand survives exactly until someone inserts a row.
  */
-function asExpr(formula: Expr | Scalar): Expr {
+function asExpr(formula: ExprInput): Expr {
+  if (isRef(formula)) return { k: 'ref', target: formula }
   if (typeof formula === 'number' || typeof formula === 'boolean') return { k: 'lit', v: formula }
   if (typeof formula !== 'string') return formula
   const parsed = parseFormula(formula)
@@ -79,7 +81,7 @@ export interface ColumnOptions<T> {
   style?: string
   bar?: boolean | DataBar
   value?: (row: T, index: number) => CellValue
-  formula?: ((row: RowContext<T>) => Expr | Scalar | null | undefined) | string
+  formula?: ((row: RowContext<T>) => ExprInput | null | undefined) | string
 }
 
 export function col<T = any>(key: string, options: ColumnOptions<T> = {}): ColumnSpec<T> {
@@ -89,7 +91,7 @@ export function col<T = any>(key: string, options: ColumnOptions<T> = {}): Colum
 export interface KeyValueEntry {
   key: string
   label: string
-  value: CellValue | Expr
+  value: CellValue | ExprInput
   format?: string
 }
 
@@ -158,7 +160,7 @@ export function KpiBand(props: { items: KpiItem[]; style?: string }): KpiBandNod
 
 export function Cell(props: {
   value?: CellValue
-  formula?: Expr | Scalar
+  formula?: ExprInput
   format?: string
   style?: string
   span?: Size

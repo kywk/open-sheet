@@ -1,9 +1,9 @@
-import { avg, count, type Expr, isExpr, max, min, sum } from '../formula/expr.js'
+import { avg, count, type Expr, isExpr, lift, max, min, sum } from '../formula/expr.js'
 import { parseFormula } from '../formula/parse.js'
 import { type Placement, placeSheet } from '../layout/place.js'
 import { type Cell, type CellKey, type CellValue, cellKey } from '../model/cell.js'
 import type { Addr, Rect, Size } from '../model/geometry.js'
-import type { Ref } from '../refs/ref.js'
+import { isRef, type Ref } from '../refs/ref.js'
 import type { DesignSystem } from '../style/design.js'
 import type { KeyValueEntry } from './components.js'
 import type { Aggregate, Block, SheetNode, TableNode, WorkbookNode } from './nodes.js'
@@ -148,7 +148,7 @@ function emitPlacement(
       block.items.forEach((item, i) => {
         cells.set(cellKey(rect.r, rect.c + i), { value: item.label, style: 'kpiLabel' })
         const valueCell: Cell = { style: 'kpiValue' }
-        if (isExpr(item.value)) valueCell.expr = item.value
+        if (isExpr(item.value) || isRef(item.value)) valueCell.expr = lift(item.value)
         else valueCell.value = item.value as CellValue
         if (item.format) valueCell.format = item.format
         cells.set(cellKey(rect.r + 1, rect.c + i), valueCell)
@@ -231,12 +231,7 @@ function emitTable(
           cells.set(target, cell)
           return
         }
-        cell.expr =
-          typeof produced === 'string'
-            ? parseFormula(produced).expr
-            : typeof produced === 'number' || typeof produced === 'boolean'
-              ? { k: 'lit', v: produced }
-              : produced
+        cell.expr = typeof produced === 'string' ? parseFormula(produced).expr : lift(produced)
       } else if (column.value) {
         cell.value = column.value(dataRow, index)
       } else {
@@ -321,7 +316,7 @@ function emitKeyValue(
     const r = startRow + index
     cells.set(cellKey(r, rect.c), { value: entry.label, style: 'kvLabel' })
     const cell: Cell = { style: 'kvValue' }
-    if (isExpr(entry.value)) cell.expr = entry.value
+    if (isExpr(entry.value) || isRef(entry.value)) cell.expr = lift(entry.value)
     else cell.value = entry.value as CellValue
     if (entry.format) cell.format = entry.format
     cells.set(cellKey(r, rect.c + 1), cell)

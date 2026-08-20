@@ -68,6 +68,7 @@ export {
   gte,
   if_,
   iferror,
+  ifna,
   irr,
   isExpr,
   isWhitelisted,

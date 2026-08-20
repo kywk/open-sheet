@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { evaluateWorkbook } from '../formula/evaluate.js'
 import { cellKey } from '../model/cell.js'
+import { ref } from '../refs/ref.js'
 import { compile } from './compile.js'
+import { col, KpiBand, Sheet, Stack, Table, Workbook } from './components.js'
 import { budget, QUARTERS, type Quarter, sideBySide } from './fixtures.js'
 import type { TableAnchor } from './registry.js'
 
@@ -143,5 +146,59 @@ describe('the invariant: inserting a data row', () => {
       }
       expect(cell.expr.l.target.row).toBe(i)
     }
+  })
+})
+
+describe('a bare ref is accepted wherever the docs say it is', () => {
+  // Reported: the reference table in sheet-authoring lists ref().total() and
+  // ref().cell() as things to write, but the types rejected them — documentation
+  // and compiler disagreeing is worse than either being wrong alone.
+  it('as a KPI value', () => {
+    const book = compile(
+      <Workbook>
+        <Sheet name="S">
+          <Stack gap={1}>
+            <Table name="t" data={[{ n: 1 }, { n: 2 }]} columns={[col('n')]} total={{ n: 'sum' }} />
+            <KpiBand items={[{ label: 'Total', value: ref('t').total('n') }]} />
+          </Stack>
+        </Sheet>
+      </Workbook>,
+    )
+    expect(evaluateWorkbook(book).get('S!6,0')).toBe(3)
+  })
+
+  it('as a column formula', () => {
+    const book = compile(
+      <Workbook>
+        <Sheet name="S">
+          <Table
+            name="t"
+            data={[{ n: 5 }, { n: 9 }]}
+            columns={[col('n'), col('copy', { formula: (r) => r.cell('n') })]}
+          />
+        </Sheet>
+      </Workbook>,
+    )
+    const values = evaluateWorkbook(book)
+    expect(values.get('S!1,1')).toBe(5)
+    expect(values.get('S!2,1')).toBe(9)
+  })
+
+  it('as a key-value entry', () => {
+    const book = compile(
+      <Workbook>
+        <Sheet name="S">
+          <Stack gap={1}>
+            <Table name="t" data={[{ n: 4 }]} columns={[col('n')]} total={{ n: 'sum' }} />
+            <Table
+              name="kv"
+              kind="keyValue"
+              data={[{ key: 'grand', label: 'Grand total', value: ref('t').total('n') }]}
+            />
+          </Stack>
+        </Sheet>
+      </Workbook>,
+    )
+    expect(evaluateWorkbook(book).get('S!4,1')).toBe(4)
   })
 })

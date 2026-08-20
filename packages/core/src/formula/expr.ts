@@ -79,6 +79,7 @@ export const FUNCTIONS = [
   'ABS',
   'IF',
   'IFERROR',
+  'IFNA',
   'AND',
   'OR',
   'NOT',
@@ -132,6 +133,7 @@ export const if_ = (test: ExprInput, then: ExprInput, otherwise: ExprInput): FnE
   fn('IF', [test, then, otherwise])
 export const iferror = (value: ExprInput, fallback: ExprInput): FnExpr =>
   fn('IFERROR', [value, fallback])
+export const ifna = (value: ExprInput, fallback: ExprInput): FnExpr => fn('IFNA', [value, fallback])
 export const npv = (rate: ExprInput, ...values: ExprInput[]): FnExpr => fn('NPV', [rate, ...values])
 export const irr = (values: ExprInput, guess?: ExprInput): FnExpr =>
   fn('IRR', guess === undefined ? [values] : [values, guess])
