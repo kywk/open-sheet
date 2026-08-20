@@ -150,7 +150,13 @@ export const sumproduct = (...args: ExprInput[]): FnExpr => fn('SUMPRODUCT', arg
 export interface RawTemplateExpr {
   k: 'rawTemplate'
   strings: readonly string[]
-  refs: Ref[]
+  /**
+   * Lifted to expressions, not stored as bare Refs. `r.cell('x')` already
+   * returns a RefExpr, so the natural interpolation is an expression — an
+   * earlier version typed it as `Ref | Expr` and implemented only `Ref`, which
+   * made the commonest form crash inside the writer.
+   */
+  parts: Expr[]
 }
 
 /**
@@ -168,18 +174,27 @@ export interface RawTemplateExpr {
  * ```
  */
 export function raw(src: string): RawExpr
-export function raw(strings: TemplateStringsArray, ...refs: (Ref | Expr)[]): RawTemplateExpr
+export function raw(strings: TemplateStringsArray, ...values: ExprInput[]): RawTemplateExpr
 export function raw(
   src: string | TemplateStringsArray,
-  ...refs: (Ref | Expr)[]
+  ...values: ExprInput[]
 ): RawExpr | RawTemplateExpr {
   if (typeof src === 'string') return { k: 'raw', src: src.replace(/^=/, '') }
 
-  const parts = [...src]
-  if (parts.length > 0) parts[0] = (parts[0] as string).replace(/^\s*=/, '')
+  const strings = [...src]
+  if (strings.length > 0) strings[0] = (strings[0] as string).replace(/^\s*=/, '')
+
   return {
     k: 'rawTemplate',
-    strings: parts,
-    refs: refs.map((value) => (isRef(value) ? value : ({ kind: 'expr', expr: value } as never))),
+    strings,
+    parts: values.map((value, i) => {
+      if (value === undefined || value === null) {
+        throw new TypeError(
+          `raw\`…\` interpolation ${i + 1} is ${String(value)}. Interpolate a reference ` +
+            "(ref('block').column('key')), a row cell (r.cell('key')), an expression, or a literal.",
+        )
+      }
+      return lift(value)
+    }),
   }
 }

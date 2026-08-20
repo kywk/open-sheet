@@ -423,3 +423,35 @@ describe('exponent associativity matches Excel', () => {
     expect(evaluateExpr(pow(pow(2, 3), 2), context, () => null)).toBe(64)
   })
 })
+
+describe('a failing formula names the construct it came from', () => {
+  it('prefixes the block, column and row', () => {
+    // Reported after bisecting a 450-line workbook by hand to find one bad
+    // column: the error surfaced with no file, line, column or block.
+    const book = () =>
+      compile({
+        kind: 'workbook',
+        children: [
+          {
+            kind: 'sheet',
+            name: 'S',
+            children: [
+              {
+                kind: 'table',
+                name: 'costs',
+                variant: 'grid',
+                showHeader: true,
+                data: [{ v: 1 }],
+                columns: [
+                  { key: 'v' },
+                  { key: 'bad', formula: () => sum(ref('costs').column('nope')) },
+                ],
+              },
+            ],
+          },
+        ],
+      })
+    expect(() => evaluateWorkbook(book())).toThrow(/"costs" column "bad" row 1/)
+    expect(() => evaluateWorkbook(book())).toThrow(/did you mean|no column "nope"/)
+  })
+})

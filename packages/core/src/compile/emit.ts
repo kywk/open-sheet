@@ -1,4 +1,14 @@
-import { avg, count, type Expr, isExpr, lift, max, min, sum } from '../formula/expr.js'
+import {
+  avg,
+  count,
+  type Expr,
+  type ExprInput,
+  isExpr,
+  lift,
+  max,
+  min,
+  sum,
+} from '../formula/expr.js'
 import { parseFormula } from '../formula/parse.js'
 import { type Placement, placeSheet } from '../layout/place.js'
 import { type Cell, type CellKey, type CellValue, cellKey } from '../model/cell.js'
@@ -223,10 +233,16 @@ function emitTable(
       const target = cellKey(firstDataRow + index, rect.c + i)
       const cell: Cell = {}
       if (column.formula) {
+        // A formula that throws is a formula somebody wrote; without the block,
+        // column and row, a 450-line workbook means bisecting by hand to find it.
         const produced =
           typeof column.formula === 'string'
             ? column.formula
-            : column.formula(makeRowContext(table.name, table.data, index))
+            : withContext(table.name, column.key, index, () =>
+                (column.formula as (r: never) => ExprInput | null | undefined)(
+                  makeRowContext(table.name, table.data, index) as never,
+                ),
+              )
         if (produced === null || produced === undefined) {
           cells.set(target, cell)
           return
@@ -331,6 +347,18 @@ function emitKeyValue(
     rect,
     keys,
   })
+}
+
+/** Names the construct a thrown error came from, which the stack alone does not. */
+function withContext<T>(block: string, column: string, row: number, fn: () => T): T {
+  try {
+    return fn()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`table "${block}", column "${column}", row ${row + 1}: ${message}`, {
+      cause: error,
+    })
+  }
 }
 
 function readField(row: unknown, key: string): CellValue {

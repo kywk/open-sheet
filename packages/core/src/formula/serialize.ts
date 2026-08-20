@@ -56,10 +56,10 @@ export function serialize(input: ExprInput, context: ResolveContext): string {
       return expr.ref
     case 'rawTemplate': {
       let out = ''
-      expr.strings.forEach((part, i) => {
-        out += part
-        const target = expr.refs[i]
-        if (target) out += refToA1(target, context)
+      expr.strings.forEach((text, i) => {
+        out += text
+        const part = expr.parts[i]
+        if (part) out += serialize(part, context)
       })
       return out
     }

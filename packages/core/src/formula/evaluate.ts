@@ -119,6 +119,13 @@ export function evaluateWorkbook(book: CompiledWorkbook): ValueMap {
     let result: Computed
     try {
       result = evaluateExpr(node.cell.expr, contextFor(node.sheet), read)
+    } catch (error) {
+      if (error instanceof CycleError) throw error
+      // A resolution failure surfaces here, far from the formula that caused it.
+      // Without the construct, finding it in a long workbook means bisecting by
+      // hand — which is what one tester actually had to do.
+      const message = error instanceof Error ? error.message : String(error)
+      throw new Error(`${describeCell(id, book)}: ${message}`, { cause: error })
     } finally {
       stack.pop()
     }

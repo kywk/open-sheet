@@ -130,6 +130,22 @@ describe('raw as a tagged template', () => {
     expect(raw`=LARGE(${ref('pl').column('revenue')}, 1)`.k).toBe('rawTemplate')
   })
 
+  it('interpolates an expression, not only a bare reference', () => {
+    // r.cell() returns a RefExpr, so an expression is the *commonest*
+    // interpolation. Typing the signature as `Ref | Expr` while implementing
+    // only `Ref` made exactly that form crash inside the writer, with tsc happy.
+    expect(toFormula(raw`=1+${ref('pl').cell('revenue', 0)}`, pl())).toBe('=1+B5')
+    expect(toFormula(raw`=SQRT(${mul(ref('pl').cell('revenue', 0), 2)})`, pl())).toBe('=SQRT(B5*2)')
+  })
+
+  it('interpolates a literal', () => {
+    expect(toFormula(raw`=ROW()+${5}`, pl())).toBe('=ROW()+5')
+  })
+
+  it('refuses an empty interpolation with a message naming the position', () => {
+    expect(() => raw`=A${undefined as never}`).toThrow(/interpolation 1 is undefined/)
+  })
+
   it('keeps the plain string form working', () => {
     expect(toFormula(raw('=XIRR(A1:A9,B1:B9)'), pl())).toBe('=XIRR(A1:A9,B1:B9)')
   })
