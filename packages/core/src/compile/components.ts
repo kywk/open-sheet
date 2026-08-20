@@ -1,4 +1,4 @@
-import type { Expr, ExprInput, Scalar } from '../formula/expr.js'
+import type { Expr, ExprInput } from '../formula/expr.js'
 import { parseFormula } from '../formula/parse.js'
 import type { CellValue } from '../model/cell.js'
 import type { Addr, Size } from '../model/geometry.js'

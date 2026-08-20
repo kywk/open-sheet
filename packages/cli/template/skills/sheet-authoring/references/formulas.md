@@ -33,9 +33,42 @@ if_(gt(r.cell('revenue'), 0), div(r.cell('cogs'), r.cell('revenue')), 0)
 
 Arithmetic: `add` `sub` `mul` `div` `pow` `neg` · text: `concat` · comparison:
 `eq` `neq` `lt` `gt` `lte` `gte` · functions: `sum` `avg` `count` `min` `max`
-`round` `abs` `if_` `iferror` `npv` `irr` `sumproduct`.
+`round` `abs` `if_` `iferror` `ifna` `npv` `irr` `sumproduct`.
 
-Bare numbers and strings lift automatically: `sub(1, ref(…).get('taxRate'))`.
+Bare numbers, strings, and references all lift automatically — a reference can go
+anywhere an expression can, including a KPI value or a whole column formula:
+
+```tsx
+{ label: 'Total cost', value: ref('costs').total('total') }
+col('mirror', { formula: (r) => r.cell('amount') })
+```
+
+## Aggregating across columns
+
+`sum` and friends are variadic, not only range-takers. When months are columns
+rather than rows — a matrix — this is how a row total is written:
+
+```tsx
+const MONTHS = [{ key: 'jan' }, { key: 'feb' }, { key: 'mar' }]
+
+col('total', { formula: (r) => sum(...MONTHS.map((m) => r.cell(m.key))) })
+```
+
+## Guarding a division
+
+Two ways, and both are honest. Use whichever reads better:
+
+```tsx
+// return null: the cell is simply empty
+formula: (r) => (r.isFirst ? null : sub(div(r.cell('cur'), r.prev().cell('cur')), 1))
+
+// iferror: keep the formula, name what happens when it cannot compute
+formula: (r) => iferror(sub(div(r.cell('cur'), r.cell('prev')), 1), '')
+```
+
+**Do not "fix" a `#DIV/0!` by padding the denominator.** `max(prev, 1)` turns an
+honest blank into a number that looks real and is not. `iferror` exists so you
+never have to.
 
 Return `null` from a `formula` to leave the cell empty — that is how a
 first-row growth figure should be written:

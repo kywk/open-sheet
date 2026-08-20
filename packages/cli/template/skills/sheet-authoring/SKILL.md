@@ -101,6 +101,10 @@ array and hand it to `data`.
 `name` is workbook-global, because `ref()` looks blocks up by name. A duplicate
 throws at compile time.
 
+`total` applies to **grid** tables only — a key-value block is a list of named
+scalars, not a column to aggregate. To total a key-value block, reference the
+entries you want and add them.
+
 ## Separate assumptions from calculations
 
 Put every number a reader might want to change on its own sheet, in a
