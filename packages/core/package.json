@@ -1,6 +1,6 @@
 {
   "name": "@open-sheet/core",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "The spreadsheet framework built for agents \u2014 compiler, formula engine, viewer, and export.",
   "license": "MIT",
   "type": "module",
