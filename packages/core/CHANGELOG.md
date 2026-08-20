@@ -1,5 +1,13 @@
 # @open-sheet/core
 
+## 0.1.5
+
+### Patch Changes
+
+- 52ae163: Elementwise functions map over a range, so `ABS(range)` inside `SUMPRODUCT`
+  computes — ranking by magnitude of change was the case that found it. Aggregates
+  are deliberately left alone: `MIN` over a range is a minimum, not one per cell.
+
 ## 0.1.4
 
 ### Patch Changes

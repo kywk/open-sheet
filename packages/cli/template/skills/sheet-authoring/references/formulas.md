@@ -164,6 +164,24 @@ A string like `"=A1+B2"` is parsed where possible so it still evaluates, but it
 is not the recommended path — it is exactly the thing that breaks when a row is
 inserted. Use references.
 
+## What happens after you hand the file over
+
+Exported ranges are ordinary A1 ranges, not Excel Tables. That decides what a
+recipient can safely do:
+
+| They do this in Excel | Ranges follow? |
+| --- | --- |
+| Insert a row **inside** the data | **Yes** — Excel rewrites `B2:B13` to `B2:B14` |
+| Change a value | Yes, everything recalculates |
+| **Append** a row below the last | **No** — the range still ends where it did |
+| Delete a row inside the data | Yes |
+
+So "insert a row above the total" is safe advice; "add new rows at the bottom" is
+not. If a workbook invites the reader to add rows, say where.
+
+Adding rows in the *source* is always safe — that is what the framework is for,
+and every reference re-resolves on the next build.
+
 ## Cycles
 
 A circular reference is reported with every participating cell. Break it in the
