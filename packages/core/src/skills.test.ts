@@ -51,6 +51,7 @@ describe.skipIf(!existsSync(skills))('the shipped skills', () => {
     expect(text).toContain('## The one rule')
     expect(text).toContain('## The file contract')
     expect(text).toContain('## The component surface')
+    expect(text).toContain('## What the framework cannot check for you')
     expect(text).toContain('## Self-review before finishing')
   })
 
@@ -62,7 +63,7 @@ describe.skipIf(!existsSync(skills))('the shipped skills', () => {
       'Nothing that depends on the values is decided in the `data` array',
       'r.isFirst',
       'Nothing was invented',
-      'cover comparable spans',
+      'covers the same ground',
       '#NOT_EVALUATED',
     ]) {
       expect(text, `self-review is missing: ${check}`).toContain(check)

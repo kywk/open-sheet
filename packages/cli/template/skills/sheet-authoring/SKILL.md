@@ -129,6 +129,47 @@ A number hard-coded inside a formula is a number the recipient cannot change.
 - [references/formats.md](references/formats.md) — number formats, styles, data bars, themes
 - [references/charts.md](references/charts.md) — what is live and what is not
 
+## What the framework cannot check for you
+
+The framework guarantees **referential integrity**: addresses are right, formulas
+point where you meant, nothing breaks when a row is inserted. It cannot guarantee
+that the things being compared are **comparable**.
+
+Every failure of this kind looks identical to a correct result. There is no error,
+no `#NOT_EVALUATED`, no trace in any cell — just a number that is arithmetically
+right and analytically wrong. Three shapes seen in real workbooks:
+
+| Shape | Example |
+| --- | --- |
+| Ordering decided in `data` | a sorted array: right this month, silently stale next month |
+| Periods of different length | two days of data beside thirty → a growth rate of +790% |
+| Sources with different coverage | 30 days of cost ÷ 20 days of requests → wrong by 50% |
+
+So whenever two numbers go into one expression — a division, a difference, a
+ranking — ask once: **do they cover the same ground?**
+
+### Normalise before you combine
+
+When two figures come from different sources, divide each by its own coverage
+first. The spans cancel, and what is left is comparable:
+
+```tsx
+// Wrong: two totals carrying different numbers of days
+col('costPerRequest', { formula: (r) => div(r.cell('cost'), r.cell('requests')) })
+
+// Right: each normalised first
+col('dailyCost',      { formula: (r) => div(r.cell('cost'), r.cell('costDays')) })
+col('dailyRequests',  { formula: (r) => div(r.cell('requests'), r.cell('requestDays')) })
+col('costPerRequest', { formula: (r) => div(r.cell('dailyCost'), r.cell('dailyRequests')) })
+```
+
+Two extra columns, and both earn their place as diagnostics: a daily cost of 810,
+1,225, 1,068 across three months shows which one is off. Collapsed into a single
+`costPerRequest`, it does not.
+
+Make the coverage gap itself a column when the sources may disagree — a visible
+number with a threshold flag beats a footnote nobody reads.
+
 ## Self-review before finishing
 
 - [ ] No A1 address anywhere in the file
@@ -142,14 +183,9 @@ A number hard-coded inside a formula is a number the recipient cannot change.
 - [ ] `r.prev()` / `r.next()` are guarded with `r.isFirst` / `r.isLast`
 - [ ] Formats are set on the columns that need them — a bare `0.0829` reads as noise
 - [ ] Nothing was invented: every figure came from the user or a named source
-- [ ] **Periods or groups being compared cover comparable spans.** Provenance is
-      not comparability. A month holding two days of data beside a month holding
-      thirty gives a growth rate that is arithmetically correct, faithfully
-      sourced, and analytically meaningless — and it leaves no trace in any cell,
-      so a wrong +790% looks exactly like a real one. Check where the data
-      *starts*, not only where it came from. Partial coverage is commonest at the
-      beginning of a dataset, which is exactly when someone is building their
-      first analysis of it.
-      Prefer **not generating** a comparison over generating one with a caveat: a
-      caveat gets skipped, a column that does not exist cannot be misread.
+- [ ] **Everything compared covers the same ground** — see "What the framework
+      cannot check for you". Provenance is not comparability, and this class of
+      error leaves no trace in any cell. Prefer **not generating** a comparison
+      over generating one with a caveat: a caveat gets skipped, a column that
+      does not exist cannot be misread.
 - [ ] The viewer shows no unexpected `#NOT_EVALUATED`
