@@ -1,5 +1,18 @@
 # @open-sheet/core
 
+## 0.1.9
+
+### Patch Changes
+
+- 15949d4: `<Sheet print={{ … }}>` sets orientation, paper size, fit-to-width, margins, and
+  whether the table header repeats on every printed page. Without it Excel prints
+  landscape at 100%, so a form comes out sideways and page two of a long table
+  arrives with no header — neither recoverable by the person holding the paper.
+  HTML and PDF follow the same declaration.
+- 35af6f6: `col(key, { wrap: true })` wraps long text. Excel does not wrap by default, so a
+  description column narrower than its content spilled into the neighbouring cell
+  or was clipped when printed — while HTML wrapped it, so the two disagreed.
+
 ## 0.1.8
 
 ### Patch Changes

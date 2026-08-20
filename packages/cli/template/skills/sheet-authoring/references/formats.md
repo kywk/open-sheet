@@ -57,6 +57,44 @@ Emits a **native** Excel `dataBar` rule over the column's data range, so it
 rescales when the numbers change, and the same rule renders as a gradient in
 HTML. Use it where a reader is comparing magnitudes down a column.
 
+## Long text
+
+Excel does not wrap. A description column set narrower than its content spills
+into the neighbouring cell, or is clipped when printed — and no test that reads
+values will notice:
+
+```tsx
+col('spec', { header: '說明', width: 30, wrap: true })
+```
+
+Set it on the columns that hold sentences, not on the whole table: wrapping a
+figures column just makes the rows taller.
+
+## Printing
+
+A workbook of grids and a workbook of forms want opposite defaults, so the sheet
+says which it is:
+
+```tsx
+<Sheet name="請款單" print={{ orientation: 'portrait', size: 'A4', fitToWidth: true, repeatHeader: true }}>
+```
+
+| Option | What it does | When |
+| --- | --- | --- |
+| `orientation` | `'portrait'` or `'landscape'` (default) | **forms are portrait** — a landscape invoice is unusable |
+| `size` | `'A4'` (default), `'A3'`, `'Letter'`, `'Legal'` | regional |
+| `fitToWidth` | scale to one page wide | any sheet meant to be printed |
+| `repeatHeader` | repeat the table header on every page | any table longer than a page |
+| `margin` | inches, all four sides | tight forms |
+
+Without this, Excel prints landscape at 100%, so a form comes out sideways and a
+long table's second page arrives with no header. Neither is recoverable by the
+person holding the paper.
+
+The HTML and PDF exports follow the same declaration: if any sheet asks for
+portrait, the document prints portrait, since a form printed sideways is unusable
+while a grid merely wraps.
+
 ## Themes
 
 `themes/<id>.md` is a house style — palette, type scale, and paste-ready
