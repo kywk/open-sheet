@@ -1,6 +1,6 @@
 # open-sheet
 
-<img src=".github/assets/banner.png" alt="open-sheet — 一張畫在試算表網格上的依賴圖：兩格匯入一格" width="100%">
+<img src=".github/assets/banner-light.png" alt="open-sheet — 一張畫在試算表網格上的依賴圖：兩格匯入一格" width="100%">
 
 [![npm](https://img.shields.io/npm/v/@open-sheet/core?style=flat&label=%40open-sheet%2Fcore)](https://www.npmjs.com/package/@open-sheet/core)
 [![CI](https://github.com/lianghsun/open-sheet/actions/workflows/ci.yml/badge.svg)](https://github.com/lianghsun/open-sheet/actions/workflows/ci.yml)
