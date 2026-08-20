@@ -55,7 +55,8 @@
         "packages/core/src/formula/functions.ts",
         "packages/core/src/jsx-runtime.ts",
         "packages/core/src/editing/locate.ts",
-        "packages/core/src/editing/design-edit.ts"
+        "packages/core/src/editing/design-edit.ts",
+        "packages/core/src/editing/edit.ts"
       ],
       "linter": {
         "rules": {
