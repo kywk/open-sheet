@@ -19,6 +19,54 @@ None of these carry an address. They are descriptions, resolved after layout.
 `r` is the argument to a column's `formula`. `ref(name)` works anywhere,
 including across sheets — the qualifier is added for you.
 
+## Letting the data decide which rows compute
+
+`r.data` is the row's own object, so a flag on the data can decide whether a cell
+computes at all — which keeps "who does this apply to" a property of the data
+rather than a condition buried in a formula:
+
+```tsx
+const MONTHS = [
+  { key: 'm202605', label: '2026-05*', partial: true },   // export started mid-month
+  { key: 'm202606', label: '2026-06', partial: false },
+]
+
+col('mom', {
+  formula: (r) => (r.isFirst || r.data.prevPartial ? null : sub(div(…), 1)),
+})
+```
+
+Returning `null` leaves the cell empty, which is the honest answer when the
+comparison is not meaningful. Better still, do not generate the column at all —
+see below.
+
+## Columns are an ordinary array
+
+`columns` is computed like any other array, which is how period-as-column layouts
+stay maintainable:
+
+```tsx
+columns={[
+  col('service', { header: 'Service' }),
+  ...MONTHS.map((m) => col(m.key, { header: m.label, format: 'currency' })),
+]}
+```
+
+You can filter as well as map. A comparison whose baseline is a partial period is
+better **not produced** than produced with a caveat — a caveat gets skipped, a
+column that does not exist cannot be misread:
+
+```tsx
+...MONTHS.slice(1)
+  .filter((_, i) => !MONTHS[i]?.partial)
+  .map((m) => col(`mom_${m.key}`, { … }))
+```
+
+**Watch the index after a filter.** `.filter().map()` gives you the position in
+the *filtered* array, not the original. Use `MONTHS.indexOf(m)` when you need the
+original position — pairing a column with the wrong month is easy to write and
+usually only shows up in the header label.
+
 ## `r.cell(key)` vs `r.data.key`
 
 `r.cell('revenue')` points at a **cell**, so the exported formula reads `B5` and
