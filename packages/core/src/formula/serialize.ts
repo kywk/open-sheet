@@ -16,6 +16,48 @@ const PRECEDENCE: Record<BinaryOp, number> = {
   '<>': 1,
 }
 
+/**
+ * Functions added after Excel 2007 are stored with an `_xlfn.` prefix in the
+ * file, and the application strips it when displaying. Writing the bare name
+ * produces `#NAME?` in anything that does not already know the function —
+ * verified against LibreOffice, where `IFS(...)` fails and `_xlfn.IFS(...)`
+ * computes.
+ *
+ * The prefix is invisible to the user: Excel shows `IFS`, and the formula bar in
+ * our own viewer shows what the author wrote.
+ */
+const FUTURE_FUNCTIONS: ReadonlySet<string> = new Set([
+  // 2019
+  'IFS',
+  'SWITCH',
+  'MAXIFS',
+  'MINIFS',
+  'TEXTJOIN',
+  'CONCAT',
+  // 365 dynamic arrays and lookups
+  'XLOOKUP',
+  'XMATCH',
+  'FILTER',
+  'SORT',
+  'SORTBY',
+  'UNIQUE',
+  'SEQUENCE',
+  'RANDARRAY',
+  'LET',
+  'LAMBDA',
+  'TEXTBEFORE',
+  'TEXTAFTER',
+  'TEXTSPLIT',
+  'VSTACK',
+  'HSTACK',
+  'TOCOL',
+  'TOROW',
+])
+
+export function storedName(name: string): string {
+  return FUTURE_FUNCTIONS.has(name.toUpperCase()) ? `_xlfn.${name.toUpperCase()}` : name
+}
+
 const NEG_PRECEDENCE = 6
 const ATOM = 100
 
@@ -68,7 +110,7 @@ export function serialize(input: ExprInput, context: ResolveContext): string {
       return precedenceOf(expr.e) < NEG_PRECEDENCE ? `-(${inner})` : `-${inner}`
     }
     case 'fn':
-      return `${expr.name}(${expr.args.map((arg) => serialize(arg, context)).join(',')})`
+      return `${storedName(expr.name)}(${expr.args.map((arg) => serialize(arg, context)).join(',')})`
     case 'op': {
       const self = PRECEDENCE[expr.op]
       const left = wrap(expr.l, context, self, 'left')
