@@ -443,5 +443,33 @@ function fromLibrary(result: unknown): Computed {
     return /^#[A-Z0-9/?!]+$/.test(code) ? errorFrom(code) : NOT_EVALUATED
   }
   if (Array.isArray(result)) return NOT_EVALUATED
+  // A date in a workbook *is* a number — the serial — with a format on top. The
+  // library hands back a Date, and treating that as "cannot compute" broke every
+  // date chain at its first call.
+  if (result instanceof Date) return toSerial(result)
   return NOT_EVALUATED
+}
+
+/**
+ * Excel counts days from 1899-12-30, an epoch that exists because 1900 is
+ * treated as a leap year for compatibility with Lotus 1-2-3. Dates before
+ * 1900-03-01 are off by one in every spreadsheet; matching that is the point.
+ */
+const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30)
+const DAY_MS = 86_400_000
+
+export function toSerial(date: Date): number {
+  const utc = Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+  )
+  return (utc - EXCEL_EPOCH_UTC) / DAY_MS
+}
+
+export function fromSerial(serial: number): Date {
+  return new Date(EXCEL_EPOCH_UTC + Math.round(serial * DAY_MS))
 }

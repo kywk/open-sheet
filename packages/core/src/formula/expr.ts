@@ -109,6 +109,42 @@ export const FUNCTIONS = [
   'AVERAGEIFS',
   'MAXIFS',
   'MINIFS',
+  // tier 2 — text
+  'LEN',
+  'LEFT',
+  'RIGHT',
+  'MID',
+  'TRIM',
+  'UPPER',
+  'LOWER',
+  'PROPER',
+  'SUBSTITUTE',
+  'REPLACE',
+  'FIND',
+  'SEARCH',
+  'TEXT',
+  'VALUE',
+  'REPT',
+  'TEXTJOIN',
+  'CONCAT',
+  // tier 2 — dates
+  'DATE',
+  'TODAY',
+  'NOW',
+  'YEAR',
+  'MONTH',
+  'DAY',
+  'HOUR',
+  'MINUTE',
+  'WEEKDAY',
+  'WEEKNUM',
+  'EOMONTH',
+  'EDATE',
+  'DATEDIF',
+  'DAYS',
+  'NETWORKDAYS',
+  'WORKDAY',
+  'YEARFRAC',
 ] as const
 
 export type FunctionName = (typeof FUNCTIONS)[number]
@@ -178,6 +214,56 @@ export const countif = (range: ExprInput, criteria: ExprInput): FnExpr =>
   fn('COUNTIF', [range, criteria])
 export const averageif = (range: ExprInput, criteria: ExprInput, avgRange?: ExprInput): FnExpr =>
   fn('AVERAGEIF', avgRange === undefined ? [range, criteria] : [range, criteria, avgRange])
+
+// --- text -------------------------------------------------------------------
+export const len = (text: ExprInput): FnExpr => fn('LEN', [text])
+export const left = (text: ExprInput, count: ExprInput = 1): FnExpr => fn('LEFT', [text, count])
+export const right = (text: ExprInput, count: ExprInput = 1): FnExpr => fn('RIGHT', [text, count])
+export const mid = (text: ExprInput, start: ExprInput, count: ExprInput): FnExpr =>
+  fn('MID', [text, start, count])
+export const trim = (text: ExprInput): FnExpr => fn('TRIM', [text])
+export const upper = (text: ExprInput): FnExpr => fn('UPPER', [text])
+export const lower = (text: ExprInput): FnExpr => fn('LOWER', [text])
+export const proper = (text: ExprInput): FnExpr => fn('PROPER', [text])
+export const substitute = (text: ExprInput, find: ExprInput, replace: ExprInput): FnExpr =>
+  fn('SUBSTITUTE', [text, find, replace])
+export const find = (needle: ExprInput, haystack: ExprInput, start?: ExprInput): FnExpr =>
+  fn('FIND', start === undefined ? [needle, haystack] : [needle, haystack, start])
+export const search = (needle: ExprInput, haystack: ExprInput, start?: ExprInput): FnExpr =>
+  fn('SEARCH', start === undefined ? [needle, haystack] : [needle, haystack, start])
+/**
+ * Formats a number *inside* a formula, which is not the same as a cell's number
+ * format: the result is text. Use a column `format` when the cell should stay a
+ * number the reader can compute with.
+ */
+export const text = (value: ExprInput, format: ExprInput): FnExpr => fn('TEXT', [value, format])
+export const value = (text: ExprInput): FnExpr => fn('VALUE', [text])
+export const rept = (t: ExprInput, times: ExprInput): FnExpr => fn('REPT', [t, times])
+export const textjoin = (
+  delimiter: ExprInput,
+  ignoreEmpty: ExprInput,
+  ...parts: ExprInput[]
+): FnExpr => fn('TEXTJOIN', [delimiter, ignoreEmpty, ...parts])
+
+// --- dates ------------------------------------------------------------------
+export const date = (year: ExprInput, month: ExprInput, day: ExprInput): FnExpr =>
+  fn('DATE', [year, month, day])
+export const today = (): FnExpr => fn('TODAY', [])
+export const year = (serial: ExprInput): FnExpr => fn('YEAR', [serial])
+export const month = (serial: ExprInput): FnExpr => fn('MONTH', [serial])
+export const day = (serial: ExprInput): FnExpr => fn('DAY', [serial])
+export const weekday = (serial: ExprInput, kind: ExprInput = 1): FnExpr =>
+  fn('WEEKDAY', [serial, kind])
+export const eomonth = (start: ExprInput, months: ExprInput = 0): FnExpr =>
+  fn('EOMONTH', [start, months])
+export const edate = (start: ExprInput, months: ExprInput): FnExpr => fn('EDATE', [start, months])
+export const days = (end: ExprInput, start: ExprInput): FnExpr => fn('DAYS', [end, start])
+export const networkdays = (start: ExprInput, end: ExprInput, holidays?: ExprInput): FnExpr =>
+  fn('NETWORKDAYS', holidays === undefined ? [start, end] : [start, end, holidays])
+export const workday = (start: ExprInput, days: ExprInput, holidays?: ExprInput): FnExpr =>
+  fn('WORKDAY', holidays === undefined ? [start, days] : [start, days, holidays])
+export const yearfrac = (start: ExprInput, end: ExprInput, basis: ExprInput = 0): FnExpr =>
+  fn('YEARFRAC', [start, end, basis])
 
 export interface RawTemplateExpr {
   k: 'rawTemplate'

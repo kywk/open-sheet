@@ -163,3 +163,31 @@ describe('react needs its own shape of the same declarations', () => {
     expect(object.fontStyle).toBe(css['font-style'])
   })
 })
+
+describe('dates are serials with a format on top', () => {
+  const serial = (y: number, m: number, d: number) =>
+    (Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86_400_000
+
+  it('renders a date code as a date, not as the number underneath', () => {
+    // A date cell holds 46258; only the format says it is 2026-08-24. Rendering
+    // the number would show the serial where Excel shows the date.
+    const d = serial(2026, 8, 24)
+    expect(formatValue(d, 'date')).toBe('2026-08-24')
+    expect(formatValue(d, 'dd/mm/yyyy')).toBe('24/08/2026')
+    expect(formatValue(d, 'd mmm yyyy')).toBe('24 Aug 2026')
+    expect(formatValue(d, 'mmmm yyyy')).toBe('August 2026')
+    expect(formatValue(d, 'dddd')).toBe('Monday')
+  })
+
+  it('does not mistake a number format for a date one', () => {
+    const d = serial(2026, 8, 24)
+    expect(formatValue(d, 'currency')).toBe('46,258')
+    expect(formatValue(d, 'number')).toBe('46,258')
+    expect(formatValue(0.5, 'percent')).toBe('50.0%')
+  })
+
+  it('tells minutes from months by what precedes them', () => {
+    const noon = serial(2026, 8, 24) + 0.5
+    expect(formatValue(noon, 'yyyy-mm-dd hh:mm')).toBe('2026-08-24 12:00')
+  })
+})

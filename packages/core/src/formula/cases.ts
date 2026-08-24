@@ -215,6 +215,80 @@ export const CASES: FunctionCase[] = [
     expect: 2,
   },
 
+  {
+    fn: 'DATEDIF',
+    note: 'whole months between two dates',
+    data: [],
+    build: () => call('DATEDIF', call('DATE', 2026, 1, 15), call('DATE', 2026, 8, 20), 'M'),
+    expect: 7,
+  },
+  {
+    fn: 'NETWORKDAYS',
+    note: 'working days, excluding weekends',
+    data: [],
+    build: () => call('NETWORKDAYS', call('DATE', 2026, 8, 3), call('DATE', 2026, 8, 14)),
+    expect: 10,
+  },
+  {
+    fn: 'WEEKDAY',
+    note: '2026-08-24 is a Monday; default numbering makes that 2',
+    data: [],
+    build: () => call('WEEKDAY', call('DATE', 2026, 8, 24)),
+    expect: 2,
+  },
+  {
+    fn: 'DAYS',
+    data: [],
+    build: () => call('DAYS', call('DATE', 2026, 3, 1), call('DATE', 2026, 2, 1)),
+    expect: 28,
+  },
+  {
+    fn: 'YEARFRAC',
+    data: [],
+    build: () =>
+      call('ROUND', call('YEARFRAC', call('DATE', 2026, 1, 1), call('DATE', 2026, 7, 1)), 4),
+    expect: 0.5,
+  },
+  {
+    fn: 'TEXTJOIN',
+    note: 'post-2007, so it needs the _xlfn prefix to work anywhere',
+    data: [],
+    build: () => call('TEXTJOIN', '-', true, 'a', 'b', 'c'),
+    expect: 'a-b-c',
+  },
+  {
+    fn: 'FIND',
+    note: 'case sensitive, 1-based',
+    data: ['hello'],
+    build: (c) => call('FIND', 'll', c(0)),
+    expect: 3,
+  },
+  {
+    fn: 'SEARCH',
+    note: 'case insensitive, unlike FIND',
+    data: ['Hello'],
+    build: (c) => call('SEARCH', 'H', c(0)),
+    expect: 1,
+  },
+  {
+    fn: 'PROPER',
+    data: ['hello world'],
+    build: (c) => call('PROPER', c(0)),
+    expect: 'Hello World',
+  },
+  {
+    fn: 'REPT',
+    data: [],
+    build: () => call('REPT', 'ab', 3),
+    expect: 'ababab',
+  },
+  {
+    fn: 'VALUE',
+    data: ['42'],
+    build: (c) => call('VALUE', c(0)),
+    expect: 42,
+  },
+
   // --- tier 3: finance and statistics --------------------------------------
   { fn: 'MEDIAN', data: N, build: (_, r) => call('MEDIAN', r(0, 4)), expect: 5 },
   {

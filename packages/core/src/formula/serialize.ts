@@ -34,6 +34,10 @@ const FUTURE_FUNCTIONS: ReadonlySet<string> = new Set([
   'MINIFS',
   'TEXTJOIN',
   'CONCAT',
+  // 2013
+  'DAYS',
+  'ISOWEEKNUM',
+  'FORMULATEXT',
   // 365 dynamic arrays and lookups
   'XLOOKUP',
   'XMATCH',

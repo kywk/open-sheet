@@ -123,6 +123,9 @@ function clean(code: string): string {
 }
 
 function renderSection(value: number, code: string): string {
+  // A date cell holds a serial; only the format says it is a date. Rendering the
+  // number would show 46265 where Excel shows 2026-08-24.
+  if (isDateCode(code)) return renderDate(value, code)
   if (code.includes('%')) {
     const decimals = decimalsIn(code)
     return `${(value * 100).toFixed(decimals)}%`
@@ -133,6 +136,108 @@ function renderSection(value: number, code: string): string {
   if (code === '@') return String(value)
 
   return trimNumber(value)
+}
+
+const DATE_TOKENS = /(yyyy|yy|mmmm|mmm|mm|m|dddd|ddd|dd|d|hh|h|ss|s|AM\/PM)/g
+
+/**
+ * A date code is one built from date tokens with no numeric placeholders. The
+ * earlier form required both a year and a day token, which excluded `ddd` and
+ * `mmmm yyyy` — both perfectly ordinary date formats.
+ */
+function isDateCode(code: string): boolean {
+  const body = code.replace(/"[^"]*"/g, '')
+  if (/[#0]/.test(body)) return false
+  if (/%/.test(body)) return false
+  return /^[ymdhs\s\-/.:,]+$/i.test(body) && /[ymdhs]/i.test(body)
+}
+
+const MONTHS_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+]
+const MONTHS_LONG = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const DAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30)
+
+function renderDate(serial: number, code: string): string {
+  const date = new Date(EXCEL_EPOCH_UTC + Math.round(serial * 86_400_000))
+  const pad = (n: number) => String(n).padStart(2, '0')
+
+  // `m` means month or minute depending on whether it follows an hour token,
+  // which is why this walks the code rather than running replacements.
+  let out = ''
+  let i = 0
+  let afterHour = false
+  while (i < code.length) {
+    const rest = code.slice(i)
+    const token = /^(yyyy|yy|mmmm|mmm|mm|m|dddd|ddd|dd|d|hh|h|ss|s)/i.exec(rest)?.[0]
+    if (!token) {
+      if (rest[0] !== '"') out += rest[0]
+      i += 1
+      continue
+    }
+    const t = token.toLowerCase()
+    if (t.startsWith('y'))
+      out += t === 'yy' ? pad(date.getUTCFullYear() % 100) : date.getUTCFullYear()
+    else if (t.startsWith('h')) {
+      out += t === 'hh' ? pad(date.getUTCHours()) : date.getUTCHours()
+      afterHour = true
+    } else if (t.startsWith('s'))
+      out += t === 'ss' ? pad(date.getUTCSeconds()) : date.getUTCSeconds()
+    else if (t.startsWith('d')) {
+      out +=
+        t === 'dddd'
+          ? DAYS_LONG[date.getUTCDay()]
+          : t === 'ddd'
+            ? DAYS_SHORT[date.getUTCDay()]
+            : t === 'dd'
+              ? pad(date.getUTCDate())
+              : date.getUTCDate()
+      afterHour = false
+    } else if (t.startsWith('m')) {
+      if (afterHour) {
+        out += t === 'mm' ? pad(date.getUTCMinutes()) : date.getUTCMinutes()
+        afterHour = false
+      } else {
+        out +=
+          t === 'mmmm'
+            ? MONTHS_LONG[date.getUTCMonth()]
+            : t === 'mmm'
+              ? MONTHS_SHORT[date.getUTCMonth()]
+              : t === 'mm'
+                ? pad(date.getUTCMonth() + 1)
+                : date.getUTCMonth() + 1
+      }
+    }
+    i += token.length
+  }
+  return out
 }
 
 function decimalsIn(code: string): number {
