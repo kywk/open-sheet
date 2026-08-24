@@ -64,6 +64,66 @@ export const CASES: FunctionCase[] = [
     expect: 3,
   },
 
+  // --- operators and coercion ------------------------------------------------
+  // Suggested by @ericweichun (#53): conformance is not only about functions.
+  // A blank cell takes the empty value of whatever it is compared against, so
+  // `blank = 0` and `blank = ""` are both true while `0 = ""` is false. The
+  // relation is not transitive, which is why blanks cannot just be normalised.
+  {
+    fn: '= (blank vs zero)',
+    data: [],
+    build: (c) => ({ k: 'op', op: '=', l: c(1), r: { k: 'lit', v: 0 } }),
+    expect: true,
+  },
+  {
+    fn: '= (blank vs empty string)',
+    data: [],
+    build: (c) => ({ k: 'op', op: '=', l: c(1), r: { k: 'lit', v: '' } }),
+    expect: true,
+  },
+  {
+    fn: '<> (blank vs zero)',
+    data: [],
+    build: (c) => ({ k: 'op', op: '<>', l: c(1), r: { k: 'lit', v: 0 } }),
+    expect: false,
+  },
+  {
+    fn: '<> (blank vs empty string)',
+    data: [],
+    build: (c) => ({ k: 'op', op: '<>', l: c(1), r: { k: 'lit', v: '' } }),
+    expect: false,
+  },
+  {
+    fn: '+ (blank as zero)',
+    data: [],
+    build: (c) => ({ k: 'op', op: '+', l: c(1), r: { k: 'lit', v: 1 } }),
+    expect: 1,
+  },
+  {
+    fn: '& (blank as empty text)',
+    data: [],
+    build: (c) => ({ k: 'op', op: '&', l: c(1), r: { k: 'lit', v: 'x' } }),
+    expect: 'x',
+  },
+  {
+    fn: '= (text is case-insensitive)',
+    data: ['A'],
+    build: (c) => ({ k: 'op', op: '=', l: c(0), r: { k: 'lit', v: 'a' } }),
+    expect: true,
+  },
+  {
+    fn: '^ (left associative, unlike most languages)',
+    note: '=2^3^2 is 64 in a spreadsheet, not 512',
+    data: [],
+    build: () => ({
+      k: 'op',
+      op: '^',
+      l: { k: 'op', op: '^', l: { k: 'lit', v: 2 }, r: { k: 'lit', v: 3 } },
+      r: { k: 'lit', v: 2 },
+    }),
+    expect: 64,
+  },
+
   // --- tier 1: lookup and conditional aggregation ---------------------------
   { fn: 'LARGE', data: N, build: (_, r) => call('LARGE', r(0, 4), 2), expect: 7 },
   { fn: 'SMALL', data: N, build: (_, r) => call('SMALL', r(0, 4), 2), expect: 3 },

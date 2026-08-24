@@ -51,6 +51,8 @@ export interface CompiledSheet {
 export interface DefinedName {
   sheet: string
   addr: Addr
+  /** The block that claimed it, so a collision can name both sides. */
+  owner: string
 }
 
 export interface CompiledWorkbook {
@@ -356,7 +358,26 @@ function emitKeyValue(
     if (entry.format) cell.format = entry.format
     cells.set(cellKey(r, rect.c + 1), cell)
     keys.set(entry.key, { r, c: rect.c + 1 })
-    definedNames.set(entry.key, { sheet: sheetName, addr: { r, c: rect.c + 1 } })
+
+    // Excel's defined names are workbook-global and case-insensitive. Two blocks
+    // claiming one name means the exported formula points at whichever was
+    // written last, while the evaluator resolves through the block the author
+    // named — the viewer and Excel then disagree about the same cell.
+    const existing = findDefinedName(definedNames, entry.key)
+    if (existing && existing.owner !== table.name) {
+      throw new Error(
+        `duplicate defined name "${entry.key}" — claimed by "${existing.owner}" and ` +
+          `"${table.name}". Excel's defined names are workbook-global and ` +
+          'case-insensitive, so one would silently win and formulas referencing the ' +
+          'other would read the wrong cell. Rename one of the keys.',
+      )
+    }
+    assertUsableName(entry.key, table.name)
+    definedNames.set(entry.key, {
+      sheet: sheetName,
+      addr: { r, c: rect.c + 1 },
+      owner: table.name,
+    })
   })
 
   registry.set(table.name, {
@@ -377,6 +398,43 @@ function withContext<T>(block: string, column: string, row: number, fn: () => T)
     throw new Error(`table "${block}", column "${column}", row ${row + 1}: ${message}`, {
       cause: error,
     })
+  }
+}
+
+function findDefinedName(names: Map<string, DefinedName>, key: string): DefinedName | undefined {
+  const lower = key.toLowerCase()
+  for (const [name, value] of names) if (name.toLowerCase() === lower) return value
+  return undefined
+}
+
+/** Excel rejects some names outright; better to say so than to write a broken file. */
+const NAME_START = /^[A-Za-z_\\]/
+const NAME_BODY = /^[A-Za-z0-9_.\\]+$/
+const LOOKS_LIKE_ADDRESS = /^\$?[A-Za-z]{1,3}\$?\d{1,7}$/
+const RESERVED = new Set(['r', 'c'])
+
+function assertUsableName(key: string, block: string): void {
+  const problem =
+    key.length === 0
+      ? 'is empty'
+      : key.length > 255
+        ? 'is longer than 255 characters'
+        : !NAME_START.test(key)
+          ? 'must start with a letter or underscore'
+          : !NAME_BODY.test(key)
+            ? 'may only contain letters, digits, underscore and full stop'
+            : LOOKS_LIKE_ADDRESS.test(key)
+              ? 'looks like a cell address'
+              : RESERVED.has(key.toLowerCase())
+                ? 'is reserved by Excel'
+                : undefined
+
+  if (problem) {
+    throw new Error(
+      `key "${key}" in block "${block}" cannot be an Excel defined name: it ${problem}. ` +
+        'Key-value keys become defined names so exported formulas read `=B5*growth`, ' +
+        'so they have to satisfy Excel’s rules for one.',
+    )
   }
 }
 

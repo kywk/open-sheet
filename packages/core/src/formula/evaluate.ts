@@ -265,7 +265,7 @@ function applyOp(op: BinaryOp, left: Computed, right: Computed): Computed {
   }
 
   if (op === '=' || op === '<>') {
-    const equal = normalizeForCompare(left) === normalizeForCompare(right)
+    const equal = equals(left, right)
     return op === '=' ? equal : !equal
   }
 
@@ -298,10 +298,36 @@ function applyOp(op: BinaryOp, left: Computed, right: Computed): Computed {
   }
 }
 
-function normalizeForCompare(value: Computed): string | number | boolean | null {
-  if (value === null || value === undefined) return null
-  if (typeof value === 'string') return value.toLowerCase()
-  return value as string | number | boolean
+function isBlank(value: Computed): boolean {
+  return value === null || value === undefined
+}
+
+/**
+ * A blank cell takes the empty value of whatever it is compared against, which
+ * is why `blank = 0` and `blank = ""` are both TRUE while `0 = ""` is FALSE —
+ * the relation is not transitive, so a blank cannot simply be normalised to one
+ * or the other. Verified against LibreOffice rather than assumed.
+ */
+function equals(left: Computed, right: Computed): boolean {
+  const leftBlank = isBlank(left)
+  const rightBlank = isBlank(right)
+  if (leftBlank && rightBlank) return true
+  if (leftBlank) return isEmptyFor(right)
+  if (rightBlank) return isEmptyFor(left)
+
+  if (typeof left === 'string' && typeof right === 'string') {
+    // Excel's text comparison ignores case.
+    return left.toLowerCase() === right.toLowerCase()
+  }
+  return left === right
+}
+
+/** The value a blank equals when compared with something of this type. */
+function isEmptyFor(value: Computed): boolean {
+  if (typeof value === 'number') return value === 0
+  if (typeof value === 'string') return value === ''
+  if (typeof value === 'boolean') return value === false
+  return false
 }
 
 /**

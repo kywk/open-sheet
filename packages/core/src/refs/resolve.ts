@@ -118,7 +118,16 @@ function resolveName(ref: NameRef, context: ResolveContext): ResolvedRef {
     sheet: anchor.sheet,
     rect: { r: addr.r, c: addr.c, rows: 1, cols: 1 },
   }
-  if (defined && defined.sheet === anchor.sheet && defined.addr.r === addr.r) {
+  // The column was missing from this check, so a name that had been overwritten
+  // by a block in another column still serialized as the bare name — pointing
+  // Excel at a different cell than the one evaluated. Compile-time collision
+  // detection makes that unreachable; this stays as the second lock.
+  if (
+    defined &&
+    defined.sheet === anchor.sheet &&
+    defined.addr.r === addr.r &&
+    defined.addr.c === addr.c
+  ) {
     resolved.name = ref.key
   }
   return resolved
