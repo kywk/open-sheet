@@ -96,6 +96,19 @@ export const FUNCTIONS = [
   'IRR',
   'PMT',
   'SUMPRODUCT',
+  // tier 1 — lookup and conditional aggregation
+  'INDEX',
+  'MATCH',
+  'LARGE',
+  'SMALL',
+  'SUMIF',
+  'SUMIFS',
+  'COUNTIF',
+  'COUNTIFS',
+  'AVERAGEIF',
+  'AVERAGEIFS',
+  'MAXIFS',
+  'MINIFS',
 ] as const
 
 export type FunctionName = (typeof FUNCTIONS)[number]
@@ -146,6 +159,25 @@ export const npv = (rate: ExprInput, ...values: ExprInput[]): FnExpr => fn('NPV'
 export const irr = (values: ExprInput, guess?: ExprInput): FnExpr =>
   fn('IRR', guess === undefined ? [values] : [values, guess])
 export const sumproduct = (...args: ExprInput[]): FnExpr => fn('SUMPRODUCT', args)
+
+export const large = (range: ExprInput, k: ExprInput): FnExpr => fn('LARGE', [range, k])
+export const small = (range: ExprInput, k: ExprInput): FnExpr => fn('SMALL', [range, k])
+export const index = (range: ExprInput, position: ExprInput): FnExpr =>
+  fn('INDEX', [range, position])
+export const match = (value: ExprInput, range: ExprInput, kind: ExprInput = 0): FnExpr =>
+  fn('MATCH', [value, range, kind])
+/**
+ * The criteria argument is a small expression language of its own — `">100"`,
+ * `"<>done"`, `"apple"`. It is passed through as written, since inventing a
+ * builder for it would mean re-implementing a syntax Excel already defines and
+ * every spreadsheet user already knows.
+ */
+export const sumif = (range: ExprInput, criteria: ExprInput, sumRange?: ExprInput): FnExpr =>
+  fn('SUMIF', sumRange === undefined ? [range, criteria] : [range, criteria, sumRange])
+export const countif = (range: ExprInput, criteria: ExprInput): FnExpr =>
+  fn('COUNTIF', [range, criteria])
+export const averageif = (range: ExprInput, criteria: ExprInput, avgRange?: ExprInput): FnExpr =>
+  fn('AVERAGEIF', avgRange === undefined ? [range, criteria] : [range, criteria, avgRange])
 
 export interface RawTemplateExpr {
   k: 'rawTemplate'

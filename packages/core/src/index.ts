@@ -63,9 +63,11 @@ export type { BinaryOp, Expr, ExprInput, FunctionName, Scalar } from './formula/
 export {
   abs,
   add,
+  averageif,
   avg,
   concat,
   count,
+  countif,
   div,
   eq,
   FUNCTIONS,
@@ -74,12 +76,15 @@ export {
   if_,
   iferror,
   ifna,
+  index,
   irr,
   isExpr,
   isWhitelisted,
+  large,
   lift,
   lt,
   lte,
+  match,
   max,
   min,
   mul,
@@ -89,8 +94,10 @@ export {
   pow,
   raw,
   round,
+  small,
   sub,
   sum,
+  sumif,
   sumproduct,
 } from './formula/expr.js'
 export type { ParsedFormula } from './formula/parse.js'
@@ -120,6 +127,8 @@ export {
 export type { Cell as CellData, CellValue, SourceLoc } from './model/cell.js'
 export { cellKey, parseCellKey } from './model/cell.js'
 export type { Addr, Rect, Size } from './model/geometry.js'
+export type { LookupSpec } from './refs/lookup.js'
+export { lookup } from './refs/lookup.js'
 export type { BlockRef, CellRef, NameRef, RangeRef, Ref, RowContext } from './refs/ref.js'
 // References
 export { isRef, ref } from './refs/ref.js'

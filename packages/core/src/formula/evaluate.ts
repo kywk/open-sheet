@@ -434,7 +434,14 @@ function fromLibrary(result: unknown): Computed {
     return result === '#VALUE!' ? NOT_EVALUATED : errorFrom(result)
   }
   if (typeof result === 'boolean') return result
-  if (result instanceof Error) return NOT_EVALUATED
+  // The library reports Excel's own errors as Error objects whose message is the
+  // error code. Treating those as "we could not compute" was wrong twice over:
+  // it hid a real spreadsheet condition, and it made IFNA unable to catch the
+  // #N/A that a failed MATCH exists to produce.
+  if (result instanceof Error) {
+    const code = result.message.trim()
+    return /^#[A-Z0-9/?!]+$/.test(code) ? errorFrom(code) : NOT_EVALUATED
+  }
   if (Array.isArray(result)) return NOT_EVALUATED
   return NOT_EVALUATED
 }
