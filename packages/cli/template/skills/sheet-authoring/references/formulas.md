@@ -166,6 +166,40 @@ col('share', {
 `r.index` is the row's position in the data, which is what makes this safe —
 insert a service and both tables move together.
 
+## Looking a value up in another table
+
+`lookup()` names the columns instead of counting them:
+
+```tsx
+col('price', {
+  formula: (r) =>
+    lookup({ value: r.cell('sku'), from: 'products', match: 'sku', get: 'price', ifMissing: 0 }),
+})
+```
+
+compiles to `INDEX(…, MATCH(…, 0))`. It is not `VLOOKUP` on purpose: `VLOOKUP`
+takes a **positional** column index, so inserting a column in the lookup table
+silently repoints it — the exact failure this framework exists to remove. It also
+requires the matched column to be leftmost, which is not the author's choice to
+make.
+
+Without `ifMissing` an unmatched row reads `#N/A`, which is Excel's answer and
+often the right one: a missing match in a reconciliation should be loud. Supply
+`ifMissing` when a blank is genuinely the answer.
+
+## Conditional aggregation
+
+`sumif` `countif` `averageif` take Excel's criteria syntax as a string:
+
+```tsx
+formula: () => sumif(ref('costs').column('amount'), '>1000')
+formula: () => countif(ref('costs').column('service'), 'Cloud Run')
+```
+
+The criteria language (`">100"`, `"<>done"`) is passed through as written. It is
+a syntax Excel already defines and every spreadsheet user already knows, so
+inventing a builder for it would add a dialect rather than remove one.
+
 ## Guarding a division
 
 Two ways, and both are honest. Use whichever reads better:

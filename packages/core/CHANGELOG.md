@@ -1,5 +1,53 @@
 # @open-sheet/core
 
+## 0.2.0
+
+### Minor Changes
+
+- 240fda5: Lookup and conditional aggregation. `lookup({ value, from, match, get, ifMissing })`
+  compiles to `INDEX`/`MATCH` over **named** columns — deliberately not `VLOOKUP`,
+  whose positional column index silently repoints when a column is inserted.
+  
+  Adds `INDEX` `MATCH` `LARGE` `SMALL` `SUMIF` `SUMIFS` `COUNTIF` `COUNTIFS`
+  `AVERAGEIF` `AVERAGEIFS` `MAXIFS` `MINIFS`, each verified against a real engine
+  before being offered.
+  
+  Excel errors from the function library are reported as Excel errors rather than
+  as "we could not compute this" — which had hidden a real `#N/A` and stopped
+  `IFNA` from catching the one a failed `MATCH` exists to produce.
+- ed2c38e: Text and dates: `LEN` `LEFT` `RIGHT` `MID` `TRIM` `UPPER` `LOWER` `PROPER`
+  `SUBSTITUTE` `FIND` `SEARCH` `TEXT` `VALUE` `REPT` `TEXTJOIN` `CONCAT`, and
+  `DATE` `TODAY` `YEAR` `MONTH` `DAY` `WEEKDAY` `EOMONTH` `EDATE` `DATEDIF` `DAYS`
+  `NETWORKDAYS` `WORKDAY` `YEARFRAC` — 67 functions whitelisted, each verified
+  against a real engine.
+  
+  Dates evaluate. A date in a workbook is a serial number with a format on top, and
+  the function library returns JavaScript `Date` objects, which the evaluator was
+  treating as "cannot compute" — so every date chain broke at its first call. The
+  HTML and viewer renderers now interpret date format codes too, instead of showing
+  the serial where Excel shows a date.
+
+### Patch Changes
+
+- 10efe56: Two correctness fixes reported by @ericweichun.
+  
+  Duplicate key-value keys are refused at compile time. Excel's defined names are
+  workbook-global and case-insensitive, so two blocks claiming one name meant the
+  exported formula pointed at whichever was written last while the evaluator
+  resolved through the block the author named — the viewer showing 0.1 where Excel
+  computed 0.2. Keys are also validated against Excel's rules for a name, and the
+  serializer now requires the column to match before using a name.
+  
+  Blank cells compare the way a spreadsheet compares them: a blank takes the empty
+  value of whatever it is compared against, so `blank = 0` and `blank = ""` are
+  both true while `0 = ""` is false. The relation is not transitive, which is why
+  a blank cannot be normalised to one or the other.
+- bd8c2d7: Functions added after Excel 2007 are written with the `_xlfn.` prefix the file
+  format requires. Without it `IFS`, `SWITCH`, and `TEXTJOIN` are `#NAME?` in
+  anything that does not already know them — verified against LibreOffice, where
+  the bare name fails and the prefixed one computes. The prefix is a storage
+  detail: Excel displays the bare name, and the parser strips it on the way back.
+
 ## 0.1.9
 
 ### Patch Changes
