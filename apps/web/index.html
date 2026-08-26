@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>open-sheet — the spreadsheet framework built for agents</title>
+<meta name="description" content="Describe the model you need; your coding agent writes the React. open-sheet owns the cell addressing, the formula references, the recalculation and the export. No A1 address is ever authored by hand.">
+<meta property="og:title" content="open-sheet — the spreadsheet framework built for agents">
+<meta property="og:description" content="A workbook baked down to static numbers is a picture of a table. open-sheet exports live formulas, and never writes a cell address by hand.">
+<meta property="og:image" content="https://open-sheet.dev/social.png">
+<meta property="og:url" content="https://open-sheet.dev">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+/* SHEET_STYLE */
+
+:root {
+  --bg: #0b1020;
+  --bg-lift: #111c34;
+  --line: #1e293b;
+  --ink: #f8fafc;
+  --dim: #94a3b8;
+  --dimmer: #64748b;
+  --accent: #3b82f6;
+  --accent-deep: #2563eb;
+  --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.65 -apple-system, "Helvetica Neue", "Noto Sans TC", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
+/* The comparison needs more room than prose does — six columns of a real sheet
+   beside the code that made them. */
+.wrap.wide { max-width: 1280px; }
+
+/* ---- nav ---- */
+nav { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(14px);
+      background: color-mix(in oklab, var(--bg) 82%, transparent);
+      border-bottom: 1px solid var(--line); }
+nav .wrap { display: flex; align-items: center; gap: 26px; height: 62px; }
+.brand { font-weight: 650; letter-spacing: -.015em; text-decoration: none; margin-right: auto; }
+.brand span { color: var(--accent); }
+nav a.link { color: var(--dim); text-decoration: none; font-size: 14.5px; }
+nav a.link:hover { color: var(--ink); }
+.ghost { border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px;
+         font-size: 14px; text-decoration: none; color: var(--ink); }
+.ghost:hover { border-color: var(--accent); }
+
+/* ---- hero ---- */
+header { padding: 92px 0 72px; border-bottom: 1px solid var(--line); }
+.eyebrow { font-size: 12.5px; letter-spacing: .16em; text-transform: uppercase;
+           color: var(--accent); font-weight: 700; margin-bottom: 20px; }
+h1 { font-size: clamp(38px, 6.2vw, 62px); line-height: 1.06; letter-spacing: -.03em;
+     margin: 0 0 22px; font-weight: 680; max-width: 15ch; }
+h1 em { font-style: italic; color: var(--accent); }
+.lede { font-size: clamp(17px, 2.1vw, 20px); color: var(--dim); max-width: 62ch; margin: 0 0 34px; }
+.lede b { color: var(--ink); font-weight: 600; }
+.cmd { display: inline-flex; align-items: center; gap: 14px; font-family: var(--mono);
+       font-size: 15px; background: var(--bg-lift); border: 1px solid var(--line);
+       border-radius: 10px; padding: 13px 18px; }
+.cmd .prompt { color: var(--dimmer); }
+.cta { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.solid { background: var(--accent-deep); border: 1px solid var(--accent);
+         border-radius: 10px; padding: 13px 20px; font-size: 15px; font-weight: 560;
+         text-decoration: none; color: #fff; }
+.solid:hover { background: var(--accent); }
+
+/* ---- sections ---- */
+section { padding: 84px 0; border-bottom: 1px solid var(--line); }
+.num { font-family: var(--mono); font-size: 13px; color: var(--accent); margin-bottom: 14px; }
+h2 { font-size: clamp(26px, 3.6vw, 36px); line-height: 1.18; letter-spacing: -.02em;
+     margin: 0 0 16px; font-weight: 650; max-width: 22ch; }
+.say { color: var(--dim); max-width: 68ch; margin: 0 0 34px; font-size: 17px; }
+.say b { color: var(--ink); font-weight: 600; }
+.say + .say { margin-top: -20px; }
+
+/* ---- the split ---- */
+.split { display: grid; grid-template-columns: .95fr 1fr; gap: 0;
+         border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.split > div { padding: 30px 32px; display: flex; flex-direction: column; }
+/* The sheet is shorter than the code beside it, so it sits in the middle of its
+   half rather than clinging to the top. */
+
+.split .out { overflow-x: auto; padding-left: 24px; padding-right: 24px; }
+/* The export gives the sheet a card of its own; inside this panel the panel is
+   the card, and the padding would only push the last column out of view. */
+.split .out div.os-sheet { padding: 0; box-shadow: none; }
+.split .code { background: #080d1a; }
+.split .out { background: #f6f8fb; color: #0f172a; }
+.cap { font-size: 11.5px; letter-spacing: .15em; text-transform: uppercase;
+       font-weight: 700; margin-bottom: 16px; }
+.code .cap { color: #64789f; }
+.out .cap { color: #7c8aa3; }
+pre { margin: 0; font-family: var(--mono); font-size: 13px; line-height: 1.6;
+      color: #dbe4f5; white-space: pre; overflow-x: auto; }
+i { font-style: normal; }
+.k { color: #7dd3fc; } .s { color: #fca5a5; } .v { color: #fbbf24; } .m { color: #a5b4fc; }
+.split .out table.os-grid { font-size: 12.5px; }
+.split .out table.os-grid td { padding: 6px 9px; }
+.out h2, .out .os-sheet-name { display: none; }
+.split .out div.os-workbook { margin: auto 0; }
+.after { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin-top: 22px; }
+.after p { margin: 0; font-size: 14.5px; color: var(--dimmer); }
+.after b { color: var(--dim); }
+
+/* ---- grids ---- */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+.card { border: 1px solid var(--line); border-radius: 12px; padding: 24px 26px;
+        background: linear-gradient(180deg, var(--bg-lift), transparent); }
+.card h3 { margin: 0 0 9px; font-size: 16.5px; font-weight: 620; letter-spacing: -.01em; }
+.card p { margin: 0; font-size: 14.5px; color: var(--dim); line-height: 1.6; }
+.card code { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+
+table.cmp { width: 100%; border-collapse: collapse; font-size: 15px; }
+/* :where() carries no specificity, so every rule after this one outranks it
+   rather than descending under it. */
+table.cmp :where(th, td) { text-align: left; padding: 14px 16px;
+                           border-bottom: 1px solid var(--line); vertical-align: top; }
+table.cmp thead th { font-size: 12.5px; letter-spacing: .1em; text-transform: uppercase;
+                     color: var(--dimmer); font-weight: 700; }
+table.cmp tbody td:first-child { color: var(--dim); width: 30%; }
+table.cmp tbody td b { color: var(--ink); font-weight: 600; }
+
+ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 0;
+           display: grid; gap: 16px; }
+ol.steps li { counter-increment: s; border: 1px solid var(--line); border-radius: 12px;
+              padding: 22px 26px 22px 66px; position: relative; }
+ol.steps li::before { content: counter(s, decimal-leading-zero); position: absolute;
+                      left: 26px; top: 22px; font-family: var(--mono); font-size: 13px;
+                      color: var(--accent); }
+ol.steps h3 { margin: 0 0 6px; font-size: 16.5px; font-weight: 620; }
+ol.steps p { margin: 0; color: var(--dim); font-size: 14.5px; }
+ol.steps code { font-family: var(--mono); font-size: 13.5px; color: var(--accent); }
+
+footer { padding: 56px 0 72px; color: var(--dimmer); font-size: 14.5px; }
+footer a { color: var(--dim); }
+footer .row { display: flex; flex-wrap: wrap; gap: 26px; margin-bottom: 26px; }
+
+@media (max-width: 820px) {
+  .split, .after { grid-template-columns: 1fr; }
+  .split .code { border-bottom: 1px solid var(--line); }
+  header { padding: 60px 0 48px; }
+  section { padding: 60px 0; }
+}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <a class="brand" href="/">open<span>-</span>sheet</a>
+  <a class="link" href="#invariant">Why</a>
+  <a class="link" href="#compare">vs Claude for Excel</a>
+  <a class="link" href="#agents">For agents</a>
+  <a class="ghost" href="https://github.com/lianghsun/open-sheet">GitHub</a>
+</div></nav>
+
+<header><div class="wrap">
+  <div class="eyebrow">v<!--version--> · MIT</div>
+  <h1>The spreadsheet framework built for <em>agents</em>.</h1>
+  <p class="lede">Describe the model you need in natural language — your coding agent
+    writes the React. open-sheet owns the cell addressing, the formula references,
+    the recalculation and the export. <b>No A1 address is ever authored by hand.</b></p>
+  <div class="cta">
+    <div class="cmd"><span class="prompt">$</span> npx @open-sheet/cli init my-sheets</div>
+    <a class="solid" href="https://github.com/lianghsun/open-sheet">Read the source</a>
+  </div>
+</div></header>
+
+<section id="invariant"><div class="wrap wide">
+  <div class="num">01</div>
+  <h2>Agents write excellent analysis and terrible spreadsheets.</h2>
+  <p class="say">The reason is specific: <b>=SUM(B2:B13)</b>. Cell addresses are the one
+    thing an agent cannot hold onto. It miscounts the header row. It forgets the total
+    moved when the data grew. It writes a reference to B7 and then inserts a quarter
+    above it — and now every formula in the file is quietly wrong. Not crashed. Wrong,
+    which is worse.</p>
+  <p class="say">So open-sheet takes the addresses away.</p>
+
+  <div class="split">
+    <div class="code">
+      <div class="cap">what you write</div>
+      <pre><!-- CODE --></pre>
+    </div>
+    <div class="out">
+      <div class="cap">what the recipient opens</div>
+      <!-- SHEET -->
+    </div>
+  </div>
+  <div class="after">
+    <p>Add a quarter to the data array and every reference re-resolves at compile time.
+      <b>There is no B2:B13 to get wrong.</b></p>
+    <p>Gross profit is <b>=B2-C2</b> in the file, not 7,300,000. Change a number and the
+      whole sheet recalculates — in Excel, in Sheets, in LibreOffice.</p>
+  </div>
+</div></section>
+
+<section id="compare"><div class="wrap">
+  <div class="num">02</div>
+  <h2>Isn&rsquo;t that what Claude for Excel does?</h2>
+  <p class="say">Different tool, different job. <b>Claude for Excel makes one person faster
+    at making a spreadsheet. open-sheet makes the spreadsheet not need making a second
+    time.</b></p>
+
+  <table class="cmp">
+    <thead><tr><th></th><th>Claude for Excel</th><th>open-sheet</th></tr></thead>
+    <tbody>
+      <tr><td>Input</td><td>a workbook that already exists</td><td><b>a source file</b></td></tr>
+      <tr><td>Who is in the loop</td><td>a person, every time</td><td><b>a person once, at review</b></td></tr>
+      <tr><td>Reviewing a change</td><td>a binary diff</td><td><b>a code review</b></td></tr>
+      <tr><td>Doing it 500 times</td><td>500 sessions</td><td><b>a loop</b></td></tr>
+      <tr><td>Needs</td><td>Excel, an account, a paid plan</td><td><b>Node. MIT.</b></td></tr>
+    </tbody>
+  </table>
+
+  <p class="say" style="margin-top:34px">An assistant working <i>inside</i> a spreadsheet
+    still writes =SUM(B2:B13) into a cell. That is a hand-authored address — authored by a
+    model, but hand-authored. Insert a row and it is wrong, and nothing tells you. This is
+    not a question of the model being clever enough: <b>A1 is the only language that medium
+    has.</b></p>
+  <p class="say">And when open-sheet cannot compute a cell, it says so. <b>#NOT_EVALUATED</b>,
+    never a plausible-looking number. Anything writing into a live cell produces something
+    number-shaped whether or not it was sure — which is the failure that costs the most and
+    shows the least.</p>
+  <p class="say"><b>Where Claude for Excel wins, and it is not close.</b> It writes live
+    formulas too — the difference is never &ldquo;ours recalculate and theirs do not.&rdquo;
+    A workbook you did not generate, we cannot read at all. It computes with Excel&rsquo;s own
+    engine, so its numbers are Excel&rsquo;s numbers by construction, where we have to earn
+    that with a cross-engine check on every build. Five hundred-odd functions to our
+    hundred-odd. Pivot tables.</p>
+  <p class="say">Use that when you have a spreadsheet and want help with it. Use this when
+    the spreadsheet is the <b>output of a pipeline</b> — a monthly board pack, five hundred
+    invoices, a model regenerated whenever the data lands. The two compose, in that order.</p>
+</div></section>
+
+<section><div class="wrap">
+  <div class="num">03</div>
+  <h2>What the recipient gets.</h2>
+  <div class="cards">
+    <div class="card"><h3>A live model</h3><p>The .xlsx holds formulas, not baked numbers.
+      Change an assumption and the sheet recalculates in whatever they opened it with.</p></div>
+    <div class="card"><h3>A dropdown, not a free-text field</h3><p><code>validate</code> puts
+      a fixed set of answers on a column, with both the prompt and the refusal message.</p></div>
+    <div class="card"><h3>Locked formulas, open inputs</h3><p><code>protect</code> unlocks the
+      cells they are meant to fill in and leaves every formula shut.</p></div>
+    <div class="card"><h3>Rows they can add</h3><p><code>appendable</code> emits an Excel Table,
+      so a row typed below the last one is taken into every range that reads it.</p></div>
+    <div class="card"><h3>Where a number came from</h3><p><code>note</code> attaches provenance
+      to the cell itself — shown on hover, not buried in a footnote.</p></div>
+    <div class="card"><h3>Something printable</h3><p>Headers, footers, page numbers and page
+      breaks that name blocks rather than row numbers, so they move when the content does.</p></div>
+  </div>
+</div></section>
+
+<section id="agents"><div class="wrap">
+  <div class="num">04</div>
+  <h2>For your agent.</h2>
+  <ol class="steps">
+    <li><h3>Scaffold</h3><p><code>npx @open-sheet/cli init my-sheets</code> writes a workspace
+      carrying five skills — how to author, how to place blocks, how formats work, what the
+      recipient can do with the file, and how it prints.</p></li>
+    <li><h3>Ask</h3><p><code>/create-sheet</code> and describe the model. The skill opens by
+      confirming the material and refusing to invent numbers, which is the failure this
+      medium punishes hardest.</p></li>
+    <li><h3>Inspect</h3><p>Click any cell in the viewer to see its source line, its resolved
+      formula and its computed value — or leave a comment for the agent to apply.</p></li>
+    <li><h3>Automate</h3><p>An MCP server over Streamable HTTP exposes the same operations
+      the browser uses, so a stale write is refused with a 409 rather than silently
+      overwriting somebody.</p></li>
+  </ol>
+</div></section>
+
+<section><div class="wrap">
+  <div class="num">05</div>
+  <h2>Verified against a real spreadsheet, on every build.</h2>
+  <p class="say">Our evaluator and Excel have to agree about what a formula means, or the
+    number in the viewer is a guess. Every whitelisted function is compiled into a fixture,
+    exported <b>without cached results</b>, recalculated by LibreOffice, and diffed against
+    what we computed. A function joins the whitelist only when a second engine agrees.</p>
+  <p class="say">That check is also why <code style="font-family:var(--mono);color:var(--accent)">SORT</code>
+    is implemented here rather than taken from a library: the library&rsquo;s compares as
+    strings, which is indistinguishable from correct until your numbers stop having the same
+    number of digits.</p>
+  <div class="cmd" style="margin-top:8px"><span class="prompt">$</span> npx @open-sheet/cli init my-sheets</div>
+</div></section>
+
+<footer><div class="wrap">
+  <div class="row">
+    <a href="https://github.com/lianghsun/open-sheet">GitHub</a>
+    <a href="https://www.npmjs.com/package/@open-sheet/core">@open-sheet/core</a>
+    <a href="https://www.npmjs.com/package/@open-sheet/cli">@open-sheet/cli</a>
+    <a href="https://www.npmjs.com/package/@open-sheet/mcp">@open-sheet/mcp</a>
+  </div>
+  <p style="margin:0">If <a href="https://open-slide.dev">open-slide</a> is Google Slides for
+    agents and <a href="https://github.com/simonliu-ai-product/open-doc">open-doc</a> is Google
+    Docs, open-sheet is Google Sheets. Same idea, different medium — but the medium changes the
+    problem. MIT.</p>
+</div></footer>
+
+</body>
+</html>

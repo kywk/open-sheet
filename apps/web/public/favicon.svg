@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="t"><title id="t">open-sheet</title>
+  <rect width="32" height="32" rx="7" fill="#0f172a"/>
+  <g stroke="#1e293b" stroke-width="1">
+    <path d="M4 12h24M4 20h24M12 4v24M20 4v24"/>
+  </g>
+  <circle cx="8" cy="8" r="2.6" fill="#3b82f6"/>
+  <circle cx="8" cy="24" r="2.6" fill="#3b82f6"/>
+  <circle cx="24" cy="16" r="2.6" fill="#f8fafc"/>
+  <path d="M10.4 9.2 21.6 15M10.4 22.8 21.6 17" stroke="#3b82f6" stroke-width="1.6" fill="none"/>
+</svg>
