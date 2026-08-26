@@ -8,3 +8,5 @@ test-results
 playwright-report
 template/skills
 *.local.md
+# generated intermediate; the .png beside it is the asset
+.github/assets/social/*.html
