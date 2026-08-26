@@ -71,5 +71,6 @@
     "playwright": {
       "optional": true
     }
-  }
+  },
+  "homepage": "https://open-sheet.dev"
 }

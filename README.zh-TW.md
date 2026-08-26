@@ -4,9 +4,12 @@
 
 [![npm](https://img.shields.io/npm/v/@open-sheet/core?style=flat&label=%40open-sheet%2Fcore)](https://www.npmjs.com/package/@open-sheet/core)
 [![CI](https://github.com/lianghsun/open-sheet/actions/workflows/ci.yml/badge.svg)](https://github.com/lianghsun/open-sheet/actions/workflows/ci.yml)
+[![open-sheet.dev](https://img.shields.io/badge/open--sheet.dev-0b1020?style=flat&logo=cloudflare&logoColor=white)](https://open-sheet.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](https://opensource.org/licenses/MIT)
 
 [English](README.md) · **繁體中文**
+
+**[open-sheet.dev](https://open-sheet.dev)** —— 它是什麼，以及你交出去的那份檔案能做什麼。
 
 **專為 agent 打造的試算表框架。** 用自然語言描述你要的模型 — 你的 coding agent 負責寫 React，open-sheet 負責儲存格位址、公式參考、重新計算與匯出。
 
