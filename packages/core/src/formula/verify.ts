@@ -7,14 +7,22 @@ import type { Expr } from './expr.js'
 import { isWhitelisted } from './expr.js'
 import { type Computed, isNotEvaluated } from './value.js'
 
-/** One case per row: its data across the left, its formula on the right. */
-const DATA_COLS = 6
-const FORMULA_COL = DATA_COLS
+/**
+ * One case per row: its data across the left, its formula on the right. The
+ * width follows the widest case — it was once a constant that counted the
+ * index column too, so a case with six values wrote its last one into the
+ * formula column and the whole run died on a circular reference.
+ */
+function dataWidth(cases: readonly FunctionCase[]): number {
+  return Math.max(1, ...cases.map((testCase) => testCase.data.length))
+}
 
 export interface Layout {
   book: CompiledWorkbook
   /** A1 address of each case's formula cell, in case order. */
   addresses: string[]
+  /** Zero-based column the results land in — for reading the engine's CSV back. */
+  resultColumn: number
 }
 
 /**
@@ -30,8 +38,9 @@ export function layout(cases: readonly FunctionCase[]): Layout {
     return row
   })
 
+  const width = dataWidth(cases)
   const columns: unknown[] = [{ key: 'case', header: 'case' }]
-  for (let i = 0; i < DATA_COLS - 1; i += 1) {
+  for (let i = 0; i < width; i += 1) {
     columns.push({ key: `d${i}`, header: `d${i}` })
   }
 
@@ -69,7 +78,8 @@ export function layout(cases: readonly FunctionCase[]): Layout {
 
   return {
     book,
-    addresses: cases.map((_, index) => toA1({ r: index + 1, c: FORMULA_COL })),
+    addresses: cases.map((_, index) => toA1({ r: index + 1, c: width + 1 })),
+    resultColumn: width + 1,
   }
 }
 
@@ -137,7 +147,8 @@ export function compare(
 
 export function evaluateCases(book: CompiledWorkbook, cases: readonly FunctionCase[]): Computed[] {
   const values = evaluateWorkbook(book)
-  return cases.map((_, index) => values.get(`Cases!${index + 1},${FORMULA_COL}`) as Computed)
+  const column = dataWidth(cases) + 1
+  return cases.map((_, index) => values.get(`Cases!${index + 1},${column}`) as Computed)
 }
 
 export function summarise(results: readonly Result[]): string {

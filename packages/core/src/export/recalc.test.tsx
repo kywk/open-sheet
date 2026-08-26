@@ -5,9 +5,10 @@ import { join } from 'node:path'
 import { unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 import { compile } from '../compile/compile.js'
-import { Chart, col, Sheet, Stack, Table, Workbook } from '../compile/components.js'
+import { Chart, col, Sheet, Spill, Stack, Table, Workbook } from '../compile/components.js'
 import { budget } from '../compile/fixtures.js'
 import { evaluateWorkbook } from '../formula/evaluate.js'
+import { sort } from '../formula/expr.js'
 import { isExcelError, isNotEvaluated } from '../formula/value.js'
 import { parseCellKey } from '../model/cell.js'
 import { ref } from '../refs/ref.js'
@@ -263,4 +264,73 @@ describe.skipIf(!SOFFICE)('native charts survive a real spreadsheet application'
     // Bound to ranges rather than to values — change a cell and the chart moves.
     expect(chart).toMatch(/chart:values-cell-range-address="Sales\.B2:Sales\.B4"/)
   })
+})
+
+/**
+ * A spill is the one construct whose formula decides how many cells it occupies,
+ * which is exactly what a placement engine that owns every coordinate cannot
+ * allow. We emit a legacy array formula over the declared rectangle instead — so
+ * the footprint is fixed at compile time and the file format enforces it. This
+ * proves a real engine fills the same cells with the same values we do.
+ */
+describe.skipIf(!SOFFICE)('a declared footprint is filled by a real engine', () => {
+  it('LibreOffice fills the spill range with what our evaluator put there', async () => {
+    const book = compile(
+      <Workbook>
+        <Sheet name="Top">
+          <Stack gap={1}>
+            <Table
+              name="reps"
+              // Deliberately mixed digit widths. With 300/900/500 a
+              // lexicographic sort is indistinguishable from a numeric one, and
+              // this test passed for a release while the viewer's SORT compared
+              // as strings.
+              data={[
+                { rep: 'Ana', revenue: 960_000 },
+                { rep: 'Ben', revenue: 102_000 },
+                { rep: 'Cai', revenue: 95_000 },
+              ]}
+              columns={[col('rep', { header: 'Rep' }), col('revenue', { header: 'Revenue' })]}
+            />
+            <Spill formula={sort(ref('reps').column('revenue'), 1, -1)} rows={3} cols={1} />
+          </Stack>
+        </Sheet>
+      </Workbook>,
+    )
+    const values = evaluateWorkbook(book)
+    const sheet = book.sheets[0] as (typeof book.sheets)[number]
+
+    // Highest first: the point of sorting descending.
+    const origin = [...sheet.cells.entries()].find(([, cell]) => cell.spill)
+    expect(origin, 'no spill cell was emitted').toBeDefined()
+    const { r, c } = parseCellKey((origin as [string, unknown])[0] as string)
+    const ours = [0, 1, 2].map((i) => values.get(`Top!${r + i},${c}`))
+    expect(ours).toEqual([960_000, 102_000, 95_000])
+
+    const buffer = await new XlsxWriter().write(book, { values, cacheValues: false })
+    const dir = mkdtempSync(join(tmpdir(), 'open-sheet-spill-'))
+    const xlsx = join(dir, 'spill.xlsx')
+    writeFileSync(xlsx, buffer)
+
+    execFileSync(
+      SOFFICE as string,
+      [
+        `-env:UserInstallation=file://${join(dir, 'profile')}`,
+        '--headless',
+        '--convert-to',
+        CSV_ALL_SHEETS,
+        '--outdir',
+        dir,
+        xlsx,
+      ],
+      { stdio: 'pipe', timeout: 150_000 },
+    )
+
+    const csv = readdirSync(dir).find((f) => f.endsWith('.csv'))
+    expect(csv, 'LibreOffice produced no output').toBeDefined()
+    const grid = parseCsv(readFileSync(join(dir, csv as string), 'utf8'))
+    const theirs = [0, 1, 2].map((i) => grid[r + i]?.[c])
+
+    expect(theirs).toEqual(['960000', '102000', '95000'])
+  }, 180_000)
 })

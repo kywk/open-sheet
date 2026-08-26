@@ -2,6 +2,10 @@
 
 ## 0.2.0
 
+### Minor Changes
+
+- Tracks `@open-sheet/core` 0.2.0.
+
 ### Patch Changes
 
 - Updated dependencies [10efe56]

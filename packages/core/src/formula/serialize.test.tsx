@@ -175,10 +175,15 @@ describe('functions newer than Excel 2007', () => {
   })
 
   it('reads the prefix back off, since the author never wrote it', () => {
-    // IFS is not whitelisted yet, so this degrades — but to `IFS`, not to
-    // `_xlfn.IFS`, which is the storage detail the author should never meet.
     expect(parseFormula('=_xlfn.SUM(1,2)').expr).toMatchObject({ k: 'fn', name: 'SUM' })
-    expect(parseFormula('=_xlfn.IFS(1,2)').reason ?? '').toContain('IFS')
-    expect(parseFormula('=_xlfn.IFS(1,2)').reason ?? '').not.toContain('_xlfn')
+    expect(parseFormula('=_xlfn.IFS(1,2)').expr).toMatchObject({ k: 'fn', name: 'IFS' })
+  })
+
+  it('names the bare function when an _xlfn one degrades, never the prefix', () => {
+    // `_xlfn.` is a storage detail of the file format; an author who never
+    // wrote it should never have to read it in an error message.
+    const parsed = parseFormula('=_xlfn.BESSELJ(1,2)')
+    expect(parsed.reason ?? '').toContain('BESSELJ')
+    expect(parsed.reason ?? '').not.toContain('_xlfn')
   })
 })

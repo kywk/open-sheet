@@ -2,7 +2,76 @@
 
 ## 0.2.0
 
+### Patch Changes
+
+- `SORT`, `UNIQUE` and `SORTBY` are implemented here rather than taken from the
+  function library, whose `SORT` compares as strings — `960000` above `95000`
+  above `81000` above `210000`, indistinguishable from correct while every value
+  has the same number of digits — and whose `UNIQUE` returns the input untouched.
+  A whitelisted function that answers wrongly is worse than an absent one.
+
+- `TEXT` is ours too, and is the same function that formats a cell — the
+  library's returns a date code's input untouched, so `text(edate(…),'yyyy-mm')`
+  showed the reader a serial. The date-code test was also relaxed to Excel's own
+  rule: unrecognised characters are literals, so `yyyy年m月` is a date code.
+
+- A validation's `errorStyle` is written as the enum the file format defines
+  (`stop` / `warning` / `information`) rather than the word the authoring surface
+  uses. Excel tolerated the wrong value; openpyxl refused the workbook outright,
+  so anything using `validate` could not be read from a Python pipeline.
+
 ### Minor Changes
+
+- The function whitelist reaches 127, and every one of them is verified against
+  LibreOffice on each build rather than assumed. The builder surface reaches 136 —
+  57 of those existed for a release without ever being re-exported from the package
+  entry, so nobody could import them; there is now a test that imports the entry
+  and the module and asserts they match.
+
+- `<Spill formula={sort(…)} rows cols />` for the functions that return a
+  rectangle: `SORT` `FILTER` `UNIQUE` `SORTBY` `SEQUENCE` `TRANSPOSE`. The
+  footprint is declared, not inferred — a legacy array formula fills exactly the
+  range it names, so the placement engine still owns every coordinate. The
+  viewer, the HTML and the CSV draw the whole footprint, which took one shared
+  helper: each renderer had decided for itself that only a cell carrying a
+  formula reads from the value map, and a spilled cell carries neither a formula
+  nor a literal.
+
+- **What the recipient can do with the file.** `validate` puts a dropdown or a
+  numeric bound on a column, with both the prompt and the refusal message.
+  `filter` puts sort arrows on the header row and switches the total to
+  `SUBTOTAL`, so hiding rows changes it. `protect={{ allow: [...] }}` unlocks the
+  inputs of the named blocks and leaves every formula locked. `note` attaches
+  provenance to a cell, shown on hover in Excel and as a tooltip in HTML.
+
+- **Printing.** `header` and `footer` take named fields (`pageNumber`,
+  `printDate`, …) and produce Excel's `&`-codes. `printArea` and `breakBefore`
+  name **blocks**, never row numbers, so a page break moves when the content
+  above it does.
+
+- **Conditional formatting** beyond data bars: `scale` for a heatmap, `icons`
+  for arrows or traffic lights, and `highlight` for rule-based fills. Both
+  renderers draw the same thing by construction — the colour scale uses the
+  linear midpoint rather than Excel's default median, which the HTML export
+  could not reproduce.
+
+- **Charts** gain `stackedBar` `area` `stackedArea` `scatter` `combo`, plus axis
+  titles, axis number formats, a pinned value range, data labels, and a
+  secondary axis. `col(key, { sparkline: { of: [...] } })` draws an in-cell trend.
+
+- `<Table appendable>` emits an Excel Table, so a row the reader adds is taken
+  into the ranges and every structured reference follows it. Column references
+  become `costs[Amount]`, same-row references become
+  `costs[[#This Row],[Amount]]`, and derived columns carry a
+  `calculatedColumnFormula` so the added row computes itself.
+
+  How the reader adds it depends on whether the table has a total row: without
+  one, typing below the last row works; with one, only inserting above the total
+  does. Measured in Excel, and `open-sheet build` prints a reminder so the author
+  can say so in a `<Note>`. A column that reads another row cannot fill down at
+  all, and the build warns naming it rather than leaving the documentation
+  promising something untrue.
+
 
 - 240fda5: Lookup and conditional aggregation. `lookup({ value, from, match, get, ifMissing })`
   compiles to `INDEX`/`MATCH` over **named** columns — deliberately not `VLOOKUP`,

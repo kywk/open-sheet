@@ -34,10 +34,28 @@ const FUTURE_FUNCTIONS: ReadonlySet<string> = new Set([
   'MINIFS',
   'TEXTJOIN',
   'CONCAT',
+  // 2010
+  'RANK.EQ',
+  'RANK.AVG',
+  'AGGREGATE',
+  'PERCENTILE.INC',
+  'PERCENTILE.EXC',
+  'QUARTILE.INC',
+  'QUARTILE.EXC',
+  'STDEV.S',
+  'STDEV.P',
+  'VAR.S',
+  'VAR.P',
+  'MODE.SNGL',
+  'MODE.MULT',
   // 2013
   'DAYS',
   'ISOWEEKNUM',
   'FORMULATEXT',
+  'XOR',
+  'IFNA',
+  'CEILING.MATH',
+  'FLOOR.MATH',
   // 365 dynamic arrays and lookups
   'XLOOKUP',
   'XMATCH',
@@ -59,8 +77,18 @@ const FUTURE_FUNCTIONS: ReadonlySet<string> = new Set([
 ])
 
 export function storedName(name: string): string {
-  return FUTURE_FUNCTIONS.has(name.toUpperCase()) ? `_xlfn.${name.toUpperCase()}` : name
+  const upper = name.toUpperCase()
+  if (WORKSHEET_ONLY.has(upper)) return `_xlfn._xlws.${upper}`
+  return FUTURE_FUNCTIONS.has(upper) ? `_xlfn.${upper}` : name
 }
+
+/**
+ * A smaller set inside the future functions: these take a second prefix because
+ * they exist only on a worksheet. Determined by writing each form and asking
+ * LibreOffice — `_xlfn.SORT` and `_xlfn._xlws.SORTBY` both give #NAME?, and
+ * nothing about the names says which needs which.
+ */
+const WORKSHEET_ONLY: ReadonlySet<string> = new Set(['SORT', 'FILTER'])
 
 const NEG_PRECEDENCE = 6
 const ATOM = 100

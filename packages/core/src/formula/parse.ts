@@ -90,9 +90,10 @@ function tokenize(input: string): Token[] {
 
     const name = NAME.exec(rest)
     if (name) {
-      // `_xlfn.IFS` is how the file stores it; the author writes `IFS`.
+      // `_xlfn.IFS` and `_xlfn._xlws.SORT` are how the file stores them; the
+      // author writes `IFS` and `SORT`.
       const raw = name[0]
-      const bare = raw.replace(/^_xlfn\./i, '')
+      const bare = raw.replace(/^_xlfn\.(_xlws\.)?/i, '')
       const upper = bare.toUpperCase()
       if (upper === 'TRUE' || upper === 'FALSE') tokens.push({ k: 'bool', v: upper === 'TRUE' })
       else tokens.push({ k: 'name', v: bare })

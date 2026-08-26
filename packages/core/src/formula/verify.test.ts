@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { XlsxWriter } from '../export/xlsx.js'
 import { CASES } from './cases.js'
+import { FUNCTIONS } from './expr.js'
 import { compare, evaluateCases, layout, summarise } from './verify.js'
 
 const SOFFICE = ['/opt/homebrew/bin/soffice', '/usr/bin/soffice', '/usr/bin/libreoffice'].find(
@@ -54,7 +55,7 @@ function parseCsv(text: string): string[][] {
  */
 describe.skipIf(!SOFFICE)('function verification', () => {
   it('reports where we agree, disagree, and cannot compute', { timeout: 240_000 }, async () => {
-    const { book } = layout(CASES)
+    const { book, resultColumn } = layout(CASES)
     const ours = evaluateCases(book, CASES)
 
     const dir = mkdtempSync(join(tmpdir(), 'open-sheet-verify-'))
@@ -80,7 +81,7 @@ describe.skipIf(!SOFFICE)('function verification', () => {
     expect(csv, 'LibreOffice produced no output').toBeDefined()
     const grid = parseCsv(readFileSync(join(dir, csv as string), 'utf8'))
 
-    const theirs = CASES.map((_, index) => grid[index + 1]?.[6])
+    const theirs = CASES.map((_, index) => grid[index + 1]?.[resultColumn])
     const results = compare(CASES, ours, theirs)
 
     console.info(`\n${summarise(results)}\n`)
@@ -96,18 +97,14 @@ describe.skipIf(!SOFFICE)('function verification', () => {
   })
 
   it('every whitelisted function has at least one case', () => {
-    // A whitelist entry with no case is a promise nothing checks.
+    // This used to check eight hardcoded names under a title that claimed all of
+    // them, and 30 functions were whitelisted with nothing verifying any of them.
     const covered = new Set(CASES.flatMap((testCase) => testCase.fn.split('+')))
-    const uncovered = [
-      'SUM',
-      'AVERAGE',
-      'COUNT',
-      'MIN',
-      'MAX',
-      'ROUND',
-      'ABS',
-      'SUMPRODUCT',
-    ].filter((name) => !covered.has(name))
+    // The array-returning ones cannot be a single-cell case by construction:
+    // their result is a rectangle. They are verified in export/recalc.test.tsx,
+    // which compiles a <Spill> and reads the whole footprint back.
+    const elsewhere = new Set(['SORT', 'SORTBY', 'UNIQUE', 'FILTER', 'SEQUENCE', 'TRANSPOSE'])
+    const uncovered = FUNCTIONS.filter((name) => !covered.has(name) && !elsewhere.has(name))
     expect(uncovered).toEqual([])
   })
 })

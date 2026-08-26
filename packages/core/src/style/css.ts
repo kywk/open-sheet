@@ -138,18 +138,19 @@ function renderSection(value: number, code: string): string {
   return trimNumber(value)
 }
 
-const DATE_TOKENS = /(yyyy|yy|mmmm|mmm|mm|m|dddd|ddd|dd|d|hh|h|ss|s|AM\/PM)/g
-
 /**
  * A date code is one built from date tokens with no numeric placeholders. The
  * earlier form required both a year and a day token, which excluded `ddd` and
  * `mmmm yyyy` — both perfectly ordinary date formats.
  */
 function isDateCode(code: string): boolean {
-  const body = code.replace(/"[^"]*"/g, '')
-  if (/[#0]/.test(body)) return false
-  if (/%/.test(body)) return false
-  return /^[ymdhs\s\-/.:,]+$/i.test(body) && /[ymdhs]/i.test(body)
+  const body = code.replace(/"[^"]*"/g, '').replace(/AM\/PM|A\/P/gi, '')
+  // A numeric placeholder, a percent or the text marker means it is not a date.
+  if (/[#0?%@]/.test(body)) return false
+  // Anything else is a literal, which is how Excel reads a format code — the
+  // earlier character whitelist rejected `yyyy年m月` and every other code with a
+  // word in it, and those fell through to number formatting as a bare serial.
+  return /[ymdhs]/i.test(body)
 }
 
 const MONTHS_SHORT = [
@@ -191,11 +192,23 @@ function renderDate(serial: number, code: string): string {
 
   // `m` means month or minute depending on whether it follows an hour token,
   // which is why this walks the code rather than running replacements.
+  // An AM/PM marker anywhere in the code puts the hour on a 12-hour clock,
+  // including the hour tokens that precede it.
+  const meridiem = /AM\/PM|A\/P/i.test(code)
+  const hour12 = (h: number) => h % 12 || 12
+
   let out = ''
   let i = 0
   let afterHour = false
   while (i < code.length) {
     const rest = code.slice(i)
+    const marker = /^(AM\/PM|A\/P)/i.exec(rest)?.[0]
+    if (marker) {
+      const pm = date.getUTCHours() >= 12
+      out += marker.length === 5 ? (pm ? 'PM' : 'AM') : pm ? 'P' : 'A'
+      i += marker.length
+      continue
+    }
     const token = /^(yyyy|yy|mmmm|mmm|mm|m|dddd|ddd|dd|d|hh|h|ss|s)/i.exec(rest)?.[0]
     if (!token) {
       if (rest[0] !== '"') out += rest[0]
@@ -206,7 +219,8 @@ function renderDate(serial: number, code: string): string {
     if (t.startsWith('y'))
       out += t === 'yy' ? pad(date.getUTCFullYear() % 100) : date.getUTCFullYear()
     else if (t.startsWith('h')) {
-      out += t === 'hh' ? pad(date.getUTCHours()) : date.getUTCHours()
+      const h = meridiem ? hour12(date.getUTCHours()) : date.getUTCHours()
+      out += t === 'hh' ? pad(h) : h
       afterHour = true
     } else if (t.startsWith('s'))
       out += t === 'ss' ? pad(date.getUTCSeconds()) : date.getUTCSeconds()
