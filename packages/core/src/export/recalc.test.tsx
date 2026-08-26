@@ -8,7 +8,7 @@ import { compile } from '../compile/compile.js'
 import { Chart, col, Sheet, Spill, Stack, Table, Workbook } from '../compile/components.js'
 import { budget } from '../compile/fixtures.js'
 import { evaluateWorkbook } from '../formula/evaluate.js'
-import { sort } from '../formula/expr.js'
+import { sort, transpose } from '../formula/expr.js'
 import { isExcelError, isNotEvaluated } from '../formula/value.js'
 import { parseCellKey } from '../model/cell.js'
 import { ref } from '../refs/ref.js'
@@ -274,63 +274,104 @@ describe.skipIf(!SOFFICE)('native charts survive a real spreadsheet application'
  * proves a real engine fills the same cells with the same values we do.
  */
 describe.skipIf(!SOFFICE)('a declared footprint is filled by a real engine', () => {
-  it('LibreOffice fills the spill range with what our evaluator put there', async () => {
-    const book = compile(
+  const revenue = [
+    { rep: 'Ana', revenue: 960_000 },
+    { rep: 'Ben', revenue: 102_000 },
+    { rep: 'Cai', revenue: 95_000 },
+  ]
+
+  function recalculate(node: unknown, values: ReturnType<typeof evaluateWorkbook>) {
+    return async (buffer: Buffer) => {
+      void node
+      void values
+      const dir = mkdtempSync(join(tmpdir(), 'open-sheet-spill-'))
+      const xlsx = join(dir, 'spill.xlsx')
+      writeFileSync(xlsx, buffer)
+      execFileSync(
+        SOFFICE as string,
+        [
+          `-env:UserInstallation=file://${join(dir, 'profile')}`,
+          '--headless',
+          '--convert-to',
+          CSV_ALL_SHEETS,
+          '--outdir',
+          dir,
+          xlsx,
+        ],
+        { stdio: 'pipe', timeout: 150_000 },
+      )
+      const csv = readdirSync(dir).find((f) => f.endsWith('.csv'))
+      expect(csv, 'LibreOffice produced no output').toBeDefined()
+      return parseCsv(readFileSync(join(dir, csv as string), 'utf8'))
+    }
+  }
+
+  function spilled(formula: ReturnType<typeof sort>, rows: number, cols: number) {
+    return compile(
       <Workbook>
         <Sheet name="Top">
           <Stack gap={1}>
             <Table
               name="reps"
-              // Deliberately mixed digit widths. With 300/900/500 a
-              // lexicographic sort is indistinguishable from a numeric one, and
-              // this test passed for a release while the viewer's SORT compared
-              // as strings.
-              data={[
-                { rep: 'Ana', revenue: 960_000 },
-                { rep: 'Ben', revenue: 102_000 },
-                { rep: 'Cai', revenue: 95_000 },
-              ]}
+              data={revenue}
               columns={[col('rep', { header: 'Rep' }), col('revenue', { header: 'Revenue' })]}
             />
-            <Spill formula={sort(ref('reps').column('revenue'), 1, -1)} rows={3} cols={1} />
+            <Spill formula={formula} rows={rows} cols={cols} />
           </Stack>
         </Sheet>
       </Workbook>,
     )
-    const values = evaluateWorkbook(book)
-    const sheet = book.sheets[0] as (typeof book.sheets)[number]
+  }
 
-    // Highest first: the point of sorting descending.
-    const origin = [...sheet.cells.entries()].find(([, cell]) => cell.spill)
-    expect(origin, 'no spill cell was emitted').toBeDefined()
-    const { r, c } = parseCellKey((origin as [string, unknown])[0] as string)
-    const ours = [0, 1, 2].map((i) => values.get(`Top!${r + i},${c}`))
+  function originOf(book: ReturnType<typeof compile>) {
+    const sheet = book.sheets[0] as (typeof book.sheets)[number]
+    const found = [...sheet.cells.entries()].find(([, cell]) => cell.spill)
+    expect(found, 'no spill cell was emitted').toBeDefined()
+    return parseCellKey((found as [string, unknown])[0] as string)
+  }
+
+  /**
+   * TRANSPOSE rather than SORT: the dynamic-array functions are recent, and the
+   * LibreOffice that CI installs from apt does not implement them — it returns
+   * #NAME? where a current one computes the answer. TRANSPOSE has been in every
+   * version, so this proves the footprint mechanism itself on any engine.
+   */
+  it('fills the whole declared range, on any engine', { timeout: 180_000 }, async () => {
+    const book = spilled(transpose(ref('reps').column('revenue')) as never, 1, 3)
+    const values = evaluateWorkbook(book)
+    const { r, c } = originOf(book)
+    const ours = [0, 1, 2].map((i) => values.get(`Top!${r},${c + i}`))
     expect(ours).toEqual([960_000, 102_000, 95_000])
 
     const buffer = await new XlsxWriter().write(book, { values, cacheValues: false })
-    const dir = mkdtempSync(join(tmpdir(), 'open-sheet-spill-'))
-    const xlsx = join(dir, 'spill.xlsx')
-    writeFileSync(xlsx, buffer)
+    const grid = await recalculate(book, values)(buffer)
+    expect([0, 1, 2].map((i) => grid[r]?.[c + i])).toEqual(['960000', '102000', '95000'])
+  })
 
-    execFileSync(
-      SOFFICE as string,
-      [
-        `-env:UserInstallation=file://${join(dir, 'profile')}`,
-        '--headless',
-        '--convert-to',
-        CSV_ALL_SHEETS,
-        '--outdir',
-        dir,
-        xlsx,
-      ],
-      { stdio: 'pipe', timeout: 150_000 },
-    )
+  /**
+   * The values SORT produces, where the engine has SORT at all. Its absence is
+   * the harness's third outcome — "this engine cannot compute it" — which is not
+   * a disagreement and must not read as one.
+   */
+  it('sorts numerically, where the engine implements SORT', { timeout: 180_000 }, async () => {
+    const book = spilled(sort(ref('reps').column('revenue'), 1, -1), 3, 1)
+    const values = evaluateWorkbook(book)
+    const { r, c } = originOf(book)
+    // Mixed digit widths on purpose: with 300/900/500 a lexicographic sort and a
+    // numeric one are indistinguishable, and that is how a string-comparing
+    // SORT passed this test for a release.
+    expect([0, 1, 2].map((i) => values.get(`Top!${r + i},${c}`))).toEqual([
+      960_000, 102_000, 95_000,
+    ])
 
-    const csv = readdirSync(dir).find((f) => f.endsWith('.csv'))
-    expect(csv, 'LibreOffice produced no output').toBeDefined()
-    const grid = parseCsv(readFileSync(join(dir, csv as string), 'utf8'))
+    const buffer = await new XlsxWriter().write(book, { values, cacheValues: false })
+    const grid = await recalculate(book, values)(buffer)
     const theirs = [0, 1, 2].map((i) => grid[r + i]?.[c])
 
+    if (theirs.every((cell) => cell === '#NAME?')) {
+      console.warn('this LibreOffice does not implement SORT; its values are unverified here')
+      return
+    }
     expect(theirs).toEqual(['960000', '102000', '95000'])
-  }, 180_000)
+  })
 })

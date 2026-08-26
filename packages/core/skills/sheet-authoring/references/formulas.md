@@ -277,6 +277,13 @@ Two of them, `FILTER` and `SEQUENCE`, are not in our function library. They
 export correctly and Excel computes them; the viewer shows `#NOT_EVALUATED`
 across the footprint until then.
 
+**Who can compute the result.** These are recent additions to the file format.
+Excel has them, and so does a current LibreOffice — but an older LibreOffice
+shows `#NAME?` across the whole footprint. `TRANSPOSE` is the exception; it has
+been there since the beginning. If the reader's spreadsheet application is not
+something you control, sort in the `data` array instead and let `<Spill>` be a
+convenience rather than the thing the workbook depends on.
+
 ## The whitelist, and `raw()`
 
 The builders above are the functions open-sheet can both write *and* evaluate.
