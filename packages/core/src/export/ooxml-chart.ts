@@ -1,7 +1,6 @@
 import { unzipSync, zipSync } from 'fflate'
 import type { CompiledSheet, CompiledWorkbook, PlacedChart } from '../compile/emit.js'
 import type { TableAnchor } from '../compile/registry.js'
-import type { Expr } from '../formula/expr.js'
 import { serialize } from '../formula/serialize.js'
 import { qualify, rangeToA1 } from '../model/a1.js'
 import { cellKey } from '../model/cell.js'

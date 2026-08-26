@@ -2,13 +2,7 @@ import type { CompiledSheet, CompiledWorkbook, PlacedChart } from '../compile/em
 import { type Computed, display, isExcelError, isNotEvaluated } from '../formula/value.js'
 import { columnName } from '../model/a1.js'
 import { parseCellKey, readsFromValues } from '../model/cell.js'
-import {
-  type Highlight,
-  type HighlightTest,
-  ICON_COLORS,
-  ICON_GLYPHS,
-  testOf,
-} from '../model/highlight.js'
+import { type HighlightTest, ICON_COLORS, ICON_GLYPHS, testOf } from '../model/highlight.js'
 import { type ResolveContext, resolveRef } from '../refs/resolve.js'
 import { formatValue, toCssText } from '../style/css.js'
 import { themeFor } from '../style/design.js'

@@ -112,8 +112,14 @@ export function unsupportedFields(
     }
     if (typeof content === 'string') return
     const field = content as MarginField
-    if ('bold' in field) return walk(field.bold)
-    if ('italic' in field) return walk(field.italic)
+    if ('bold' in field) {
+      walk(field.bold)
+      return
+    }
+    if ('italic' in field) {
+      walk(field.italic)
+      return
+    }
     if (!('field' in field)) return
     const supported =
       renderer === 'pdf'
