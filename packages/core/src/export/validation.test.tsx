@@ -87,6 +87,40 @@ describe('what the recipient is allowed to type', () => {
     expect(xml).toContain('Lists!$A$1:$A$2')
   })
 
+  it('reads an appendable list through INDIRECT, so appending an option reaches it', async () => {
+    // An absolute range is fixed: an option appended to the bottom of the
+    // lookup sheet never reaches the dropdown, with no error and nothing for
+    // whoever maintains the list to notice. INDIRECT over the table column
+    // resolves to whatever the table has grown to.
+    const xml = await sheetXml(
+      (
+        <Workbook>
+          <Sheet name="Lists">
+            <Table
+              name="statuses"
+              appendable
+              data={[{ name: '待審' }, { name: '核准' }]}
+              columns={[col('name', { header: '狀態' })]}
+            />
+          </Sheet>
+          <Sheet name="Register">
+            <Table
+              name="requests"
+              data={[{ status: '待審' }]}
+              columns={[col('status', { validate: { list: ref('statuses').column('name') } })]}
+            />
+          </Sheet>
+        </Workbook>
+      ) as never,
+      2,
+    )
+    expect(xml).toContain('INDIRECT(&quot;statuses[狀態]&quot;)')
+    // Never the bare structured reference: written straight into a validation
+    // it makes Excel refuse to open the workbook — not ignore the rule, refuse
+    // the file.
+    expect(xml).not.toContain('<formula1>statuses[')
+  })
+
   it('turns bounds into the operator Excel expects', async () => {
     // `between` is the format's default operator, so it is written by omission —
     // what distinguishes it is the second bound.

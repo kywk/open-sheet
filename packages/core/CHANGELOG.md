@@ -1,5 +1,16 @@
 # @open-sheet/core
 
+## Unreleased
+
+### Patch Changes
+
+- A dropdown whose options come from an `appendable` table now reads them
+  through `INDIRECT`, so an option appended at the bottom of the lookup sheet
+  reaches every dropdown that uses it. An absolute range is fixed, and the
+  append case failed silently — no error, the option simply never appeared.
+  It has to be `INDIRECT("statuses[Status]")` rather than the bare structured
+  reference, which makes Excel refuse to open the workbook at all.
+
 ## 0.2.0
 
 ### Patch Changes

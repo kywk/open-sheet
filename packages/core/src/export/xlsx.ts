@@ -282,7 +282,7 @@ function toExcelValidation(validation: Validation, context: ResolveContext): unk
             return String(item)
           })
           .join(',')}"`
-      : absoluteRange(rule.list as Ref, context)
+      : listSource(rule.list as Ref, context)
     return { type: 'list', ...messages, formulae: [formula] }
   }
   if ('whole' in rule) return { type: 'whole', ...messages, ...boundsFormulae(rule.whole) }
@@ -320,6 +320,39 @@ function toDateSerial(value: string | number): number {
   const parsed = Date.parse(`${value}T00:00:00Z`)
   if (Number.isNaN(parsed)) throw new Error(`validation date "${value}" is not an ISO date`)
   return Math.round((parsed - Date.UTC(1899, 11, 30)) / 86_400_000)
+}
+
+/**
+ * Where the dropdown reads its options from.
+ *
+ * An absolute range is fixed: append an option to the bottom of the lookup
+ * sheet and the dropdown never sees it — silently, with no error and nothing to
+ * notice. When the options live in an `appendable` table, `INDIRECT` over the
+ * table column resolves to whatever the table has grown to, so appending works.
+ *
+ * It has to be `INDIRECT("statuses[Status]")` and not the bare
+ * `statuses[Status]`: a structured reference written straight into a
+ * validation's formula makes Excel refuse to open the workbook at all — not
+ * ignore the rule, refuse the file. Measured in Excel, and LibreOffice resolves
+ * the INDIRECT form too.
+ *
+ * The cost is that INDIRECT is volatile, so it re-evaluates on every
+ * recalculation. Lookup lists are small; if yours is not, leave the table plain
+ * and take the fixed range.
+ */
+function listSource(reference: Ref, context: ResolveContext): string {
+  if (reference.kind === 'range' && reference.part === 'column' && reference.column !== undefined) {
+    const anchor = context.registry.get(reference.block)
+    const header =
+      anchor?.kind === 'table' ? anchor.table?.headers.get(reference.column) : undefined
+    if (anchor?.kind === 'table' && header !== undefined) {
+      const escaped = header.replace(/([[\]#'@])/g, "'$1")
+      // The name is inside a formula *string*, so a double quote in a header
+      // would close it early.
+      return `INDIRECT("${anchor.name}[${escaped.replace(/"/g, '""')}]")`
+    }
+  }
+  return absoluteRange(reference, context)
 }
 
 function absoluteRange(reference: Ref, context: ResolveContext): string {

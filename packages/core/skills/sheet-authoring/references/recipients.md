@@ -42,8 +42,18 @@ cell with `<Cell validate={…} />`.
 Point a list at a `ref()` when the options belong to the workbook: the lookup
 sheet stays the single source of truth for every dropdown that reads it.
 
-**Maintaining that list has the same insert-versus-append trap as a table.** The
-validation stores a fixed range (`'Lists'!$A$2:$A$4`), so:
+**Make the lookup table `appendable` and the list keeps up on its own.**
+
+```tsx
+<Table name="statuses" appendable data={statuses} columns={[col('name', { header: '狀態' })]} />
+```
+
+The validation then reads `INDIRECT("statuses[狀態]")`, which resolves to
+whatever the table has grown to — so appending an option at the bottom of the
+lookup sheet reaches every dropdown that reads it.
+
+Without `appendable` the validation stores a fixed range (`'Lists'!$A$2:$A$4`),
+and then:
 
 | Editing the lookup sheet in Excel | Dropdown follows? |
 | --- | --- |
@@ -51,10 +61,16 @@ validation stores a fixed range (`'Lists'!$A$2:$A$4`), so:
 | Change an option | yes |
 | **Append** below the last option | **no** — and nothing says so |
 
-The append case fails silently: no error, the new option simply never appears,
-and whoever maintains the list has no way to notice. Tell them to insert, or
-regenerate the workbook from source — which is always safe, and is what the
-framework is for.
+That last one fails silently: no error, the new option simply never appears, and
+whoever maintains the list has no way to notice. Either make the table
+`appendable`, or tell them to insert rather than append.
+
+Two things about the INDIRECT form. It must be `INDIRECT("statuses[狀態]")` and
+not the bare `statuses[狀態]` — a structured reference written straight into a
+validation makes Excel refuse to open the workbook at all, not ignore the rule.
+And INDIRECT is volatile, so it re-evaluates on every recalculation; lookup
+lists are small, but if yours is not, leave the table plain and take the fixed
+range.
 
 An inline list is stored as one comma-separated string, so an option containing
 a comma would silently become two — that is refused at export with an error
